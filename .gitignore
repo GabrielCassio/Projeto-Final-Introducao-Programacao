@@ -1,0 +1,13 @@
+# Pasta do Ambiente Virtual
+template-pygame/
+.template-pygame/
+
+# Arquivos de cache do Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Outras pastas e arquivos comuns
+*.env
+instance/

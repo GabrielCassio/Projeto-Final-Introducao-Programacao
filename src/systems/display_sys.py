@@ -33,5 +33,3 @@ class DisplayConfiguration():
         pygame.display.flip()
         # Fill screen with white color
         self.surface_screen.fill((255, 255, 255))
-
-

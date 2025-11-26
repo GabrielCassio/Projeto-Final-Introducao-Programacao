@@ -11,7 +11,6 @@ import app.app_run as app_run
 
 # Instancing Game Application
 instance_app_run = app_run.App()
-instance_app_run.initializate()
 
 running = True
 while (running):

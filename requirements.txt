@@ -1,0 +1,2 @@
+# Bibioletaca principal
+pygame >= 2.6.0

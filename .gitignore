@@ -1,6 +1,8 @@
 # Pasta do Ambiente Virtual
 template-pygame/
 .template-pygame/
+venv/
+.venv/
 
 # Arquivos de cache do Python
 __pycache__/

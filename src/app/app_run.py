@@ -31,7 +31,7 @@ class App:
         # \\\\\\\\\\ Initialization Render ///////////////
         self.instance_render = render_system.RenderSystem(self.instance_display_config.surface_screen, self.instance_camera)
 
-        self.player = obj_player.Player("Edísio", "./sprites/psg.png", 300, 300)
+        self.player = obj_player.Player("Edísio", "src/sprites/psg.png", 300, 300)
         self.instance_render.add_sprite(self.player, LAYER_CHARACTERS)
         # ---------------------------------------------------------
         # Initializating sprites
@@ -40,4 +40,3 @@ class App:
     def update(self):
        self.instance_timers.update()
        self.instance_render.update()
-       '''self.instance_display_config.update()'''

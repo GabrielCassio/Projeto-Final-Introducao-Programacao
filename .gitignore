@@ -1,6 +1,4 @@
 # Pasta do Ambiente Virtual
-template-pygame/
-.template-pygame/
 venv/
 .venv/
 

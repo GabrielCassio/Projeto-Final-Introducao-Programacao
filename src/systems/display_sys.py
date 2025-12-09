@@ -14,7 +14,7 @@ class DisplayConfiguration():
     # Id surface screen of the game
     surface_screen = None
     # Path of icon of the main window
-    surface_icon = "./sprites/game_icon/window_icon.png"
+    surface_icon = "src/sprites/game_icon/window_icon.png"
 
     def __init__(self):
         # /// Default configurations \\\

@@ -3,7 +3,7 @@ import src.systems.display_sys as display_system
 import src.systems.timers_sys as timer_system
 import src.systems.render_sys as render_system
 import src.systems.camera_sys as camera_system
-import src.objects.entity.characters.obj_player as obj_player
+import src.objects.entity.obj_player as obj_player
 
 LAYER_BACKGROUND = 0
 LAYER_CHARACTERS = 1
@@ -30,11 +30,12 @@ class App:
         self.instance_timers = timer_system.Timers()
         # \\\\\\\\\\ Initialization Render ///////////////
         self.instance_render = render_system.RenderSystem(self.instance_display_config.surface_screen, self.instance_camera)
-
-        self.player = obj_player.Player("Edísio", "src/sprites/psg.png", 300, 300)
+        
+        # ----------------------------------------------------------
+        # Initializing iamges Render
+        self.player = obj_player.Player("Edísio", 300, 300, "src/sprites/psg.png")
         self.instance_render.add_sprite(self.player, LAYER_CHARACTERS)
         # ---------------------------------------------------------
-        # Initializating sprites
 
     def update(self):
        self.instance_timers.update()

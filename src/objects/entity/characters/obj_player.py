@@ -7,8 +7,9 @@ class Player(pygame.sprite.Sprite):
 
     # Class initialization
     def __init__(self, name: str, path_sprite: str, x: int, y: int):
-       # Acessing 
+       # Acessing de parent of the Player class
        super().__init__()
+
        # Setting infos for the class Player
        # Name of player
        self.name = name
@@ -16,8 +17,6 @@ class Player(pygame.sprite.Sprite):
        self.image = None
        # Velocity of player
        self.velocity = 5
-       # Position of char
-       self.position = {'x': x, 'y': y}
 
        # Initializating the sprite of player
        self.load_sprite(path_sprite, x, y)
@@ -28,8 +27,8 @@ class Player(pygame.sprite.Sprite):
         # Catching rect collision of the sprite
         self.rect = self.image.get_rect()
         # Position tuple of the char
-        self.rect.topleft = (x, y)
+        self.rect.center = (x, y)
 
     def update(self):
         # Calling de function of movement
-        self.position['x'], self.position['y'] = self.rect.x, self.rect.y = obj_keyboard.input_keyboard_handling(self.position['x'], self.position['y'], self.velocity)
+       self.rect.x, self.rect.y = obj_keyboard.input_keyboard_handling(self.rect.x, self.rect.y, self.velocity)

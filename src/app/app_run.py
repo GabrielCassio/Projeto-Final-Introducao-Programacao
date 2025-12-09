@@ -3,7 +3,7 @@ import src.systems.display_sys as display_system
 import src.systems.timers_sys as timer_system
 import src.systems.render_sys as render_system
 import src.systems.camera_sys as camera_system
-import src.objects.entity.characters.player as obj_player
+import src.objects.entity.characters.obj_player as obj_player
 
 LAYER_BACKGROUND = 0
 LAYER_CHARACTERS = 1
@@ -36,7 +36,7 @@ class App:
         # ---------------------------------------------------------
         # Initializating sprites
 
-
     def update(self):
        self.instance_timers.update()
        self.instance_render.update()
+       self.player.update()

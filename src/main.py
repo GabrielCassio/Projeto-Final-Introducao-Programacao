@@ -3,7 +3,7 @@
 # Config paths libs
 import pathlib, sys
 # Defining source as root
-sourceDir = pathlib.Path(__file__).resolve().parents
+sourceDir = pathlib.Path(__file__).resolve().parent.parent
 sys.path.append(str(sourceDir))
 
 import pygame
@@ -16,7 +16,7 @@ running = True
 while (running):
 
     # pygame.QUIT event means the user clicked X to close your window
-    for event in pygame.event.get():
+    for event in pygame.event.get():    
         if event.type == pygame.QUIT:
             running = False
 

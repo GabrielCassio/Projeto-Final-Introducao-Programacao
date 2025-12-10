@@ -4,6 +4,7 @@ import src.systems.timers_sys as timer_system
 import src.systems.render_sys as render_system
 import src.systems.camera_sys as camera_system
 import src.objects.entity.obj_player as obj_player
+import src.systems.ui as UI
 
 LAYER_BACKGROUND = 0
 LAYER_CHARACTERS = 1
@@ -37,7 +38,11 @@ class App:
         self.instance_render.add_sprite(self.player, LAYER_CHARACTERS)
         # ---------------------------------------------------------
 
+        # Initializing Ui
+        self.ui = UI.UI()
+
     def update(self):
        self.instance_timers.update()
        self.instance_render.update()
+       self.ui.display(self.player)
        self.player.update()

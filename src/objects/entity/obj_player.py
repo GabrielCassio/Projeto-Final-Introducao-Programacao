@@ -1,6 +1,7 @@
 import pygame
 from src.objects.entity.obj_entity import Entity
-from src.objects.components.obj_input import InputHandling
+from src.systems.inputs_sys import InputHandling
+
 
 # This class create a new Player Object
 # This class inherints de class of the pygame - pygame.sprite.Sprite
@@ -13,6 +14,16 @@ class Player(Entity):
 
        # Initializating the sprite of player
        self.load_sprite(x, y, path_sprite)
+
+    def move(self, new_position_x: int, new_position_y: int) -> None:
+
+        # Store old position
+        self.old_position.x = self.rect.x
+        self.old_position.y = self.rect.y
+
+        # Loading new position
+        self.rect.x = new_position_x
+        self.rect.y = new_position_y
 
     def load_sprite(self, x: int, y: int, path_sprite: str):
         # Loading sprite/skin to this player
@@ -33,8 +44,7 @@ class Player(Entity):
 
         if (delta_pos_vertical > 0): self.sprite_direction = 'down'
         elif (delta_pos_vertical < 0): self.sprite_direction = 'up'
+    
 
     def update(self):
-        # Calling de function of movement
-        InputHandling.player_movement(self)
         self.animation()

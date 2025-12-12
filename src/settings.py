@@ -4,6 +4,19 @@ HEIGHT = 720
 FPS = 60
 TILESIZE = 64
 
+# Render Game Layers ---------------------
+# Home Game
+LAYER_BUTTONS    = 0
+
+
+# In Game
+LAYER_BACKGROUND = 0
+LAYER_CHARACTERS = 1
+LAYER_OBJECTS    = 2
+LAYER_FOREGROUND = 3
+LAYER_UI         = 4
+# ----------------------------------------
+
 # ui
 BAR_HEIGHT = 20
 HEALTH_BAR_WIDTH = 200

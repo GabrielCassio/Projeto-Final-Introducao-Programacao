@@ -1,14 +1,16 @@
 import pygame
+# Importing systems
 import src.systems.display_sys as display_system
 import src.systems.timers_sys as timer_system
 import src.systems.render_sys as render_system
 import src.systems.camera_sys as camera_system
-import src.objects.entity.obj_player as obj_player
-import src.systems.ui as UI
+import src.systems.inputs_sys as inputs_system
+import src.systems.collision_sys as collision_system
+import src.systems.scenes_sys as scenes_system
+import src.systems.ui_sys as UI
 
-LAYER_BACKGROUND = 0
-LAYER_CHARACTERS = 1
-LAYER_FOREGROUND = 2
+# Importing settings do application layer
+from settings import *
 
 class App:
     # Initializate Game
@@ -27,22 +29,46 @@ class App:
 
         # \\\\\\\\\\ Initialization Cameras ///////////////
         self.instance_camera = camera_system.Camera(display_width, display_height)
+
         # \\\\\\\\\\ Initialization Timers ///////////////
         self.instance_timers = timer_system.Timers()
+
         # \\\\\\\\\\ Initialization Render ///////////////
-        self.instance_render = render_system.RenderSystem(self.instance_display_config.surface_screen, self.instance_camera)
-        
+        self.instance_render = render_system.RenderSystem()
+        self.instance_render.initialization(self.instance_display_config.surface_screen, self.instance_camera)
+
+        # \\\\\\\\\\ Initialization Scenes///////////////
+        self.instance_collision = collision_system.Collision()
+
+        # \\\\\\\\\\ Initialization Scenes///////////////
+        self.instance_scenes = scenes_system.Scenes()
+
+        # \\\\\\\\\\ Initialization Inputs Handling ///////////////
+        self.instance_input = inputs_system.InputHandling()
         # ----------------------------------------------------------
-        # Initializing iamges Render
-        self.player = obj_player.Player("Edísio", 300, 300, "src/sprites/psg.png")
-        self.instance_render.add_sprite(self.player, LAYER_CHARACTERS)
-        # ---------------------------------------------------------
 
         # Initializing Ui
         self.ui = UI.UI()
 
     def update(self):
+       # Update Timers
        self.instance_timers.update()
+
+       # Update Render
        self.instance_render.update()
-       self.ui.display(self.player)
-       self.player.update()
+       self.instance_render.render_group.update()
+
+        # Update input Handling
+       self.instance_input.update()
+       self.instance_input.execute_movement_command(self.instance_scenes.player)
+       self.instance_input.execute_attack_command(self.instance_scenes.player)
+       self.instance_input.execute_dash_command(self.instance_scenes.player)
+       # ----------------------
+
+
+       # Update UI
+       #self.ui.display(self.player)
+
+       # Update Player
+       #self.player.update()
+       self.instance_scenes.update()

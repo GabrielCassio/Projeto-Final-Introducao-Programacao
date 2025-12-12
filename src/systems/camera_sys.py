@@ -15,5 +15,4 @@ class Camera:
         x = -target_rect.centerx + int(self.camera_rect.width / 2)
         y = -target_rect.centery + int(self.camera_rect.height / 2)
 
-
         self.camera_rect.topleft = (x * -1, y * -1)

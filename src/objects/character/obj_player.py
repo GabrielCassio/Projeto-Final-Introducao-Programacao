@@ -1,7 +1,5 @@
 import pygame
-from src.objects.entity.obj_entity import Entity
-from src.systems.inputs_sys import InputHandling
-
+from src.objects.character.obj_entity import Entity
 
 # This class create a new Player Object
 # This class inherints de class of the pygame - pygame.sprite.Sprite

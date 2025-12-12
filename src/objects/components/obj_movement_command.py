@@ -1,5 +1,5 @@
 import pygame
-from src.objects.entity.obj_entity import Entity
+from src.objects.character.obj_entity import Entity
 
 class MovementCommand:
 

@@ -7,12 +7,15 @@ import src.systems.camera_sys as camera_system
 import src.systems.inputs_sys as inputs_system
 import src.systems.collision_sys as collision_system
 import src.systems.scenes_sys as scenes_system
-import src.systems.ui_sys as UI
+import src.systems.ui_sys as ui_system
 
 # Importing settings do application layer
 from settings import *
 
 class App:
+    '''
+        Abstraction Game Loop to integrate systems.
+    '''
     # Initializate Game
     def __init__(self):
         num_sucess_init_mods, num_fail_init_mods = pygame.init() # Setup the PyGame initializer
@@ -41,14 +44,14 @@ class App:
         self.instance_collision = collision_system.Collision()
 
         # \\\\\\\\\\ Initialization Scenes///////////////
-        self.instance_scenes = scenes_system.Scenes()
+        self.instance_scenes = scenes_system.ScenesSystem()
 
         # \\\\\\\\\\ Initialization Inputs Handling ///////////////
         self.instance_input = inputs_system.InputHandling()
         # ----------------------------------------------------------
 
         # Initializing Ui
-        self.ui = UI.UI()
+        self.ui = ui_system.UI()
 
     def update(self):
        # Update Timers
@@ -57,18 +60,16 @@ class App:
        # Update Render
        self.instance_render.update()
        self.instance_render.render_group.update()
-
-        # Update input Handling
+       
+       # Update input Handling
        self.instance_input.update()
+       
        self.instance_input.execute_movement_command(self.instance_scenes.player)
        self.instance_input.execute_attack_command(self.instance_scenes.player)
        self.instance_input.execute_dash_command(self.instance_scenes.player)
        # ----------------------
 
-
        # Update UI
        #self.ui.display(self.player)
 
-       # Update Player
-       #self.player.update()
        self.instance_scenes.update()

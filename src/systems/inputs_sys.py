@@ -1,12 +1,13 @@
 import pygame
 # Importing the identity classes
-from src.objects.entity.obj_entity import Entity
+from src.objects.character.obj_entity import Entity
 # Importing Commands
 from src.objects.components.obj_movement_command import MovementCommand
 from src.objects.components.obj_dash_command import DashCommand
 from src.objects.components.obj_attack_command import AttackCommand
 
 class InputHandling:
+
     def __init__(self) -> None:
         # Declaring input handling variables
         self.command_history = []
@@ -16,6 +17,7 @@ class InputHandling:
         '''
             Movimentação de personagem em um plano.
         '''
+
         # Command instance
         move_command = None
         # Descloc variables
@@ -61,4 +63,4 @@ class InputHandling:
 
 
     def update(self) -> None:
-        self.pressed_buttons = pygame.key.get_pressed()
+        self.spressed_buttons = pygame.key.get_pressed()

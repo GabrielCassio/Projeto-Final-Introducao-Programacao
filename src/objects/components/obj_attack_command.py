@@ -1,58 +1,54 @@
 import pygame
-# Importing systems
 from src.systems.render_sys import RenderSystem
-#from src.systems.collision_sys import Collision
-
-# Importing Settings
 from src.settings import *
-
-# Importamos o projétil da mesma pasta (o ponto . significa diretório atual)
-from .obj_projectile import Projectile
+from .obj_projectile import Projectile, MeleeHitbox
 
 class AttackCommand:
     def __init__(self, player_entity):
-        """
-        Gerencia as ações de combate do jogador.
-        :param player_entity: Referência ao objeto Player principal (para pegar posição X, Y e direção).
-        """
-        # Player Instance
         self.player = player_entity
-        # Render Instance
         self.instance_render = RenderSystem()
-        # Collision instance
-        #self.instance_collision = Collision()
     
     def execute_bow_attack(self):
-        """
-        Deve ser chamado a cada frame no Update do Player.
-        Verifica teclas e retorna o objeto gerado (flecha) ou sinal de ataque.
-        """
-        
+        keys = pygame.key.get_pressed()
         now = pygame.time.get_ticks()
         
-        if (now - self.player.last_shot > self.player.shot_cooldown):
-            self.last_shot = now
-            
-            new_projectile = Projectile(self.player.rect.centerx, self.player.rect.centery, self.player.direction)
-            
-            self.instance_render.add_sprite(new_projectile, LAYER_OBJECTS)
-        
+        if now < self.player.global_action_cooldown:
+            return
 
-            '''all_assets.add(new_projectile)
-            projectiles_group.add(new_projectile)'''
-        
-
+        if keys[pygame.K_r] and self.player.bow_skill:
+            if (now - self.player.last_shot > self.player.shot_cooldown):
+                
+                self.player.last_shot = now 
+                
+                self.player.global_action_cooldown = now + self.player.delay_after_action
+                
+                new_projectile = Projectile(self.player.rect.centerx, self.player.rect.centery, self.player.direction)
+                self.instance_render.add_sprite(new_projectile, LAYER_OBJECTS)
+    
     def execute_melee_attack(self):
-        """
-        Deve ser chamado a cada frame no Update do Player.
-        Verifica teclas e retorna o objeto gerado (flecha) ou sinal de ataque.
-        """
-        now = pygame.time.get_ticks()
-        
-        result = None
-        if (now - self.player.last_melee_time > self.player.melee_cooldown):
-            self.player.last_melee_time = now
-            print("Ataque Melee realizado!") 
-            result = "melee_triggered"
+            keys = pygame.key.get_pressed()
+            mouse_buttons = pygame.mouse.get_pressed()
+            now = pygame.time.get_ticks()
 
-        return result
+            if self.player.pending_second_hit:
+                if now >= self.player.second_hit_timer:
+                    hitbox = MeleeHitbox(self.player.rect, self.player.direction, self.player.frames_atk_2, style='sweep')
+                    self.instance_render.add_sprite(hitbox, LAYER_OBJECTS)
+                    self.player.pending_second_hit = False
+                return 
+
+            if now < self.player.global_action_cooldown:
+                return
+
+            if (keys[pygame.K_e] or mouse_buttons[0]):            
+                self.player.locked_attack_direction = self.player.direction
+                
+                hitbox = MeleeHitbox(self.player.rect, self.player.locked_attack_direction, self.player.frames_atk_1, style='thrust')
+                
+                self.instance_render.add_sprite(hitbox, LAYER_OBJECTS)
+                
+                self.player.pending_second_hit = True
+                self.player.second_hit_timer = now + self.player.time_atk_1
+                
+                total_lock = self.player.time_atk_1 + self.player.time_atk_2 + self.player.delay_after_action
+                self.player.global_action_cooldown = now + total_lock

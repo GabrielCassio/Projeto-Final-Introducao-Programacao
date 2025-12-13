@@ -1,7 +1,0 @@
-pyproject.toml
-src/pathfinder/__init__.py
-src/pathfinder/relative_paths.py
-src/pathfinder.egg-info/PKG-INFO
-src/pathfinder.egg-info/SOURCES.txt
-src/pathfinder.egg-info/dependency_links.txt
-src/pathfinder.egg-info/top_level.txt

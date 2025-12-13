@@ -41,13 +41,13 @@ class InputHandling:
         if (move_command != None): self.command_history.append(move_command)
 
     def execute_attack_command(self, character: Entity) -> None:
-
         attack_comand = AttackCommand(character)
 
         if (self.pressed_buttons[pygame.K_r] and character.bow_skill):
             attack_comand.execute_bow_attack()
-        elif (self.pressed_buttons[pygame.K_f] and character.melee_skill):
-            attack_comand.execute_melee_attack()
+            
+        if character.melee_skill:
+             attack_comand.execute_melee_attack()
 
         self.command_history.append(attack_comand)
 

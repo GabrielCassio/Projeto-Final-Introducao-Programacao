@@ -22,6 +22,7 @@ class RenderSystem:
         sprite._layer = layer
         self.render_group.add(sprite)
 
+    # Use the render function when you want to clear the screen
     def render(self):
         # Clear the screen with backgroundColor white
         self.main_screen_surface.fill((255, 255, 255))

@@ -17,6 +17,11 @@ LAYER_FOREGROUND = 3
 LAYER_UI         = 4
 # ---------------------------------
 
+# Fonts ---------------------------------
+BUTTONS_FONT = 'src/fonts/VT323-Regular.ttf'
+TITLES_FONT = 'src/fonts/BoldPixels.ttf'
+# ---------------------------------
+
 # Button Colors -------------------
 # Greens
 GREEN_100_COLOR = '#dcfce7' # Ligth text
@@ -27,7 +32,7 @@ GREEN_900_COLOR = '#14532d' # Backgronud Button
 
 # Grayscale | Backgrounds
 GRAY_950_COLOR = '#030712'  # Background screen
-GRAY_900_COLOR = '#111827'
+GRAY_900_COLOR = '#111827'  
 GRAY_800_COLOR = '#1f2937'
 GRAY_500_COLOR = '#6b7280'
 BLACK_COLOR = '#000000'
@@ -36,12 +41,6 @@ BLACK_COLOR = '#000000'
 RED_400_COLOR = '#f87171'
 RED_500_COLOR = '#ef4444'
 RED_900_COLOR = '#7f1d1d'
-
-# ---------------------------------
-
-# Button Fonts --------------------
-
-FONT_BUTTON = 'src/fonts/BoldPixels.ttf'
 # ---------------------------------
 
 
@@ -50,7 +49,7 @@ BAR_HEIGHT = 20
 HEALTH_BAR_WIDTH = 200
 ENERGY_BAR_WIDTH = 140
 ITEM_BOX_SIZE = 80
-UI_FONT = 'src/fonts/BoldPixels.ttf'
+
 UI_FONT_SIZE = 18
 # ---------------------------------
 

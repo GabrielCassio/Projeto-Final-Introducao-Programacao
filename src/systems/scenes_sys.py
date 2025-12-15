@@ -30,7 +30,6 @@ class ScenesSystem:
             Function to change the scene game
         '''
         self.current_scene = self.scenes[name_scene]
-        
     
     def update(self):
         '''

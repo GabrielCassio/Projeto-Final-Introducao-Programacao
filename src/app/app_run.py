@@ -50,26 +50,11 @@ class App:
         self.instance_input = inputs_system.InputHandling()
         # ----------------------------------------------------------
 
-        # Initializing Ui
-        self.ui = ui_system.UI()
 
     def update(self):
        # Update Timers
        self.instance_timers.update()
 
-       # Update Render
-       self.instance_render.update()
-       self.instance_render.render_group.update()
-       
-       # Update input Handling
-       self.instance_input.update()
-       
-       self.instance_input.execute_movement_command(self.instance_scenes.player)
-       self.instance_input.execute_attack_command(self.instance_scenes.player)
-       self.instance_input.execute_dash_command(self.instance_scenes.player)
-       # ----------------------
-
-       # Update UI
-       #self.ui.display(self.player)
-
+       # Update Scene
        self.instance_scenes.update()
+       self.instance_render.update()

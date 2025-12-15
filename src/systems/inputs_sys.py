@@ -10,9 +10,9 @@ class InputHandling:
 
     def __init__(self) -> None:
         # Declaring input handling variables
-        self.command_history = []
-        self.pressed_buttons = None
-
+       self.command_history = []
+       self.pressed_buttons = pygame.key.get_pressed()
+        
     def execute_movement_command(self, character: Entity) -> None:
         '''
             Movimentação de personagem em um plano.
@@ -61,6 +61,5 @@ class InputHandling:
         
         if (dash_command != None): self.command_history.append(dash_command)
 
-
     def update(self) -> None:
-        self.spressed_buttons = pygame.key.get_pressed()
+        self.pressed_buttons = pygame.key.get_pressed()

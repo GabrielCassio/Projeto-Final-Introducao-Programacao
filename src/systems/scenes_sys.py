@@ -1,23 +1,19 @@
 import pygame
 
-# Importing systems
-from src.systems.render_sys import RenderSystem
+# Importing scenes
 from src.scenes.scene_0 import GameHome
 from src.scenes.scene_1 import GameRunning
 
-# Importing Entities
-from src.objects.character.obj_player import Player
-
-# Importing settings
-from src.settings import *
+# Importing systems
+from src.systems.render_sys import RenderSystem
 
 class ScenesSystem:
     def __init__(self):
-        # Render system instance to render the scenes
+        # Render instance
         self.instance_render = RenderSystem()
-
+        # Player instance
         self.player = None
-
+        # Dictionary of Scene classes
         self.scenes = {
             'Game Home': GameHome(self),
             'Game Running': GameRunning(self),
@@ -25,21 +21,19 @@ class ScenesSystem:
 
         # Defining default scene to the game
         self.current_scene = self.scenes['Game Home']
+        # Draw the Scene
+        self.current_scene.draw()
+        self.instance_render.render()
 
     def switch_scene(self, name_scene: str):
+        '''
+            Function to change the scene game
+        '''
         self.current_scene = self.scenes[name_scene]
-
-    # Home Game page layout   
-    def scene_0(self):
-        ...
-    
-    def scene_1(self):
-        # Initializing iamges Render
-        self.player = Player("Edísio", 300, 300, "src/sprites/psg.png")
-        self.instance_render.add_sprite(self.player, LAYER_CHARACTERS)
-
+        
     
     def update(self):
         '''
-            Keep the current scene to 
+            Keep the current scene to update it
         '''
+        self.current_scene.update()

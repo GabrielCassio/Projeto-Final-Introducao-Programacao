@@ -38,10 +38,6 @@ class AttackCommand:
             self.instance_render.add_sprite(new_projectile, LAYER_OBJECTS)
         
 
-            '''all_assets.add(new_projectile)
-            projectiles_group.add(new_projectile)'''
-        
-
     def execute_melee_attack(self):
         """
         Deve ser chamado a cada frame no Update do Player.

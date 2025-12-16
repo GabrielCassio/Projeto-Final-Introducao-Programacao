@@ -1,47 +1,37 @@
 import pygame
+
+# Importing scenes
+from src.scenes.scene_0 import GameHome
+from src.scenes.scene_1 import GameRunning
+
 # Importing systems
 from src.systems.render_sys import RenderSystem
 
-# Importing Entities
-from src.objects.entity.obj_player import Player
-
-# Importing settings
-from src.settings import *
-
-class Scenes:
+class ScenesSystem:
     def __init__(self):
-        # Render system instance to render the scenes
+        # Render instance
         self.instance_render = RenderSystem()
-
-        # Index to the game scene
-        self.cur_scene = 'Game Running'
-
+        # Player instance
         self.player = None
-
+        # Dictionary of Scene classes
         self.scenes = {
-            'Game Home': self.scene_0,
-            'Game Running': self.scene_1,
+            'Game Home': GameHome(self),
+            'Game Running': GameRunning(self),
         }
-        self.draw_scenes()
 
-    def draw_scenes(self):
-        match (self.cur_scene):
-            case 'Game Home': 
-                return self.scenes['Game Home']()
-            case 'Game Running':
-                return self.scenes['Game Running']()
-            case _:
-                return self.scenes['Game Running']()
+        # Defining default scene to the game
+        self.current_scene = self.scenes['Game Home']
 
-    # Home Game page layout   
-    def scene_0(self):
-        ...
-    
-    def scene_1(self):
-        # Initializing iamges Render
-        self.player = Player("Edísio", 300, 300, "src/sprites/psg.png")
-        self.instance_render.add_sprite(self.player, LAYER_CHARACTERS)
-        ...
+    def switch_scene(self, name_scene: str):
+        '''
+            Function to change the scene game
+        '''
+        self.current_scene = self.scenes[name_scene]
     
     def update(self):
-        self.player.update()
+        '''
+            Keep the current scene to update it
+        '''
+        self.current_scene.update()
+        self.current_scene.draw()
+        self.instance_render.render()

@@ -1,6 +1,7 @@
 import pygame
+
 # Importing Entities
-from src.objects.entity.obj_entity import Entity
+from src.objects.character.obj_entity import Entity
 
 class DashCommand:
     def __init__(self, character: Entity):

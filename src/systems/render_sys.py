@@ -1,6 +1,4 @@
 import pygame
-'''import src.systems.ui_sys as UI
-import src.objects.entity.obj_player as obj_player'''
 
 class RenderSystem:
 
@@ -10,8 +8,7 @@ class RenderSystem:
     main_camera = None
 
     def __init__(self):
-       ''' self.ui = UI.UI()
-        self.player = obj_player.Player("Edísio", 300, 300, "src/sprites/psg.png")'''
+       pass
 
     @classmethod
     def initialization(cls, screen, camera):
@@ -23,22 +20,15 @@ class RenderSystem:
         sprite._layer = layer
         self.render_group.add(sprite)
 
-    def update(self):
-        # Clear the screen with backgroundColor white
-        self.main_screen_surface.fill((255, 255, 255))
-
+    # Use the render function when you want to clear the screen
+    def render(self):
+    
         # Drawning sprites
         for sprite in self.render_group:
             # Pega a posição na tela baseada na câmera
             screen_pos = self.main_camera.apply(sprite.rect)
             # Desenha a imagem do sprite naquela posição
             self.main_screen_surface.blit(sprite.image, screen_pos)
-
-            # Desenha a UI
-            # self.ui.display(self.player)
-
-            # (Debug) Drawning the reactangle of sprite
-            # pygame.draw.rect(self.main_screen_surface, (255,0,0), screen_pos, 1)
-
-        # 3. Atualiza o display final
+    
+    def update(self):
         pygame.display.flip()

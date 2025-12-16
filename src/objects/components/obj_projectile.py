@@ -2,6 +2,9 @@ import pygame
 from src.settings import *
 
 class Projectile(pygame.sprite.Sprite):
+    '''
+        
+    '''
     def __init__(self, x, y, direction):
         super().__init__()
         

@@ -11,8 +11,12 @@ class RenderSystem:
        pass
 
     @classmethod
-    def initialization(cls, screen, camera):
+    def initialization(cls, screen):
         cls.main_screen_surface = screen
+        cls.main_camera = None
+
+    @classmethod
+    def set_camera(cls, camera):
         cls.main_camera = camera
 
     def add_sprite(self, sprite, layer=0):
@@ -22,12 +26,14 @@ class RenderSystem:
 
     # Use the render function when you want to clear the screen
     def render(self):
+        if not self.main_camera:
+            return
     
         # Drawning sprites
         for sprite in self.render_group:
-            # Pega a posição na tela baseada na câmera
+            # Catching the posttion by the camera
             screen_pos = self.main_camera.apply(sprite.rect)
-            # Desenha a imagem do sprite naquela posição
+            # Draw the sprite image in that position
             self.main_screen_surface.blit(sprite.image, screen_pos)
     
     def update(self):

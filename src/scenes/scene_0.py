@@ -14,14 +14,15 @@ from src.sprites.home_screen_assets import *
 
 class GameHome(Scene):
     '''
-        
+        Initial Scene of the Game/ Home Scene
     '''
     def __init__(self, scene_system):
+        # Calling the superclass scene and passing de system scene instance
         super().__init__(scene_system)
-        self.display_surface = pygame.display.get_surface()
-        self.display_surface = pygame.display.get_surface()
-        self.largura = self.display_surface.get_width()
-        self.altura = self.display_surface.get_height()
+    
+        
+        self.width = self.display_surface.get_width()
+        self.height = self.display_surface.get_height()
         
         # --- CARREGAMENTO DE ASSETS ---
         pasta_atual = os.path.dirname(__file__)
@@ -36,12 +37,12 @@ class GameHome(Scene):
             try:
                 caminho_img = os.path.join(caminho_assets, f'fundo0{i}.png')
                 img = pygame.image.load(caminho_img).convert()
-                img = pygame.transform.scale(img, (self.largura, self.altura))
+                img = pygame.transform.scale(img, (self.width, self.height))
                 self.fundos.append(img)
             except FileNotFoundError:
                 print(f"ERRO: Imagem {caminho_img} não encontrada.")
                 # Cria fallback preto se falhar
-                surf = pygame.Surface((self.largura, self.altura))
+                surf = pygame.Surface((self.width, self.height))
                 self.fundos.append(surf)
 
         # Caveira
@@ -75,7 +76,7 @@ class GameHome(Scene):
     
     def criar_particula_titulo(self):
         return {
-            'x': self.largura // 2 + random.randint(-90, 90),
+            'x': self.width // 2 + random.randint(-90, 90),
             'y': 140,
             'vida': random.randint(18, 30),
             'dx': random.choice([-1, 0, 1]),
@@ -86,7 +87,7 @@ class GameHome(Scene):
 
     def criar_particula_menu(self, y_base):
         return {
-            'x': self.largura // 2 + random.randint(-70, 70),
+            'x': self.width // 2 + random.randint(-70, 70),
             'y': y_base + random.randint(-2, 2),
             'vida': random.randint(14, 22),
             'dx': random.choice([-1, 0, 1]),
@@ -103,7 +104,7 @@ class GameHome(Scene):
         elif opcao == 'INICIAR JOGO':
             # Lógica para trocar de cena
             print("Iniciando Jogo...") 
-            # self.scene_system.change_scene('game_level') 
+            self.instance_scene_sys.switch_scene('Game Running') 
         else:
             print(f"Você selecionou: {opcao}")
 
@@ -142,19 +143,19 @@ class GameHome(Scene):
         # Borda
         for dx, dy in [(-2,0),(2,0),(0,-2),(0,2)]:
             borda = self.fonte_titulo.render('ÉDISO', True, (180, 90, 20))
-            self.display_surface.blit(borda, (self.largura//2 - borda.get_width()//2 + dx, 70 + dy))
+            self.display_surface.blit(borda, (self.width//2 - borda.get_width()//2 + dx, 70 + dy))
         # Frente
         titulo = self.fonte_titulo.render('ÉDISO', True, (255, 170, 90))
-        self.display_surface.blit(titulo, (self.largura//2 - titulo.get_width()//2, 70))
+        self.display_surface.blit(titulo, (self.width//2 - titulo.get_width()//2, 70))
 
         # 3. Subtítulo
         # Borda
         for dx, dy in [(-1,0),(1,0),(0,-1),(0,1)]:
             borda = self.fonte_menu.render('THE LEGEND OF THE RESCUE', True, (80, 40, 120))
-            self.display_surface.blit(borda, (self.largura//2 - borda.get_width()//2 + dx, 135 + dy))
+            self.display_surface.blit(borda, (self.width//2 - borda.get_width()//2 + dx, 135 + dy))
         # Frente
         subtitulo = self.fonte_menu.render('THE LEGEND OF THE RESCUE', True, (170, 120, 255))
-        self.display_surface.blit(subtitulo, (self.largura//2 - subtitulo.get_width()//2, 135))
+        self.display_surface.blit(subtitulo, (self.width//2 - subtitulo.get_width()//2, 135))
 
         # 4. Partículas do Menu
         for p in self.particulas_menu:
@@ -174,20 +175,20 @@ class GameHome(Scene):
                 borda = self.fonte_menu.render(opcao, True, (60, 30, 90))
                 self.display_surface.blit(
                     borda, 
-                    (self.largura//2 - borda.get_width()//2 + dx, base_y + i*42 + dy)
+                    (self.width//2 - borda.get_width()//2 + dx, base_y + i*42 + dy)
                 )
 
             # Texto principal
             texto = self.fonte_menu.render(opcao, True, cor)
             self.display_surface.blit(
                 texto, 
-                (self.largura//2 - texto.get_width()//2, base_y + i*42)
+                (self.width//2 - texto.get_width()//2, base_y + i*42)
             )
 
         # 6. Caveira
         self.display_surface.blit(
             self.caveira,
-            (self.largura//2 - 118, self.caveira_y_atual)
+            (self.width//2 - 118, self.caveira_y_atual)
         )
 
     def update(self):

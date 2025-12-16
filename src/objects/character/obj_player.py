@@ -13,6 +13,16 @@ class Player(Entity):
        # Initializating the sprite of player
        self.load_sprite(x, y, path_sprite)
 
+
+       
+       self.stats = {'health': 100, 'energy': 60, 'attack': 10, 'magic': 4, 'speed': 6}
+       self.max_stats = {'health': 300, 'energy': 140, 'attack': 20, 'magic': 10, 'speed': 10}
+       self.upgrade_cost = {'health': 100, 'energy': 100, 'attack': 100, 'magic': 100, 'speed': 100}
+       self.health = self.stats['health']
+       self.energy = self.stats['energy']
+       self.exp = 120
+       self.speed = self.stats['speed']
+
     def move(self, new_position_x: int, new_position_y: int) -> None:
 
         # Store old position

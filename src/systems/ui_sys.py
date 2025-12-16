@@ -1,12 +1,17 @@
 import pygame
+
+# Importing settings
 from src.settings import *
 
 class UI(pygame.sprite.Sprite):
+  '''
+    Class that designs the entire user interface in the game.
+  '''
   def __init__(self):
     super().__init__()
     # General
     self.display_surface = pygame.display.get_surface()
-    self.font = pygame.font.Font(UI_FONT, UI_FONT_SIZE)
+    self.font = pygame.font.Font(TITLES_FONT, UI_FONT_SIZE)
     
     # bar setup
     self.health_bar_rect = pygame.Rect(10, 10, HEALTH_BAR_WIDTH, BAR_HEIGHT)

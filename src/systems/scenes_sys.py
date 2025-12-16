@@ -11,8 +11,6 @@ class ScenesSystem:
     def __init__(self):
         # Render instance
         self.instance_render = RenderSystem()
-        # Player instance
-        self.player = None
         # Dictionary of Scene classes
         self.scenes = {
             'Game Home': GameHome(self),

@@ -11,6 +11,7 @@ from src.objects.character.obj_player import Player
 from src.objects.collectibles.obj_badge import Badge
 from src.objects.collectibles.obj_coin import Coin
 from src.objects.collectibles.obj_trophy import Trophy
+from src.support import import_csv_layout
 
 # Importing settings
 from src.settings import *
@@ -42,9 +43,41 @@ class GameRunning(Scene):
         # 5. Finally, create the scaled image using the calculated values
         self.floor_surf = pygame.transform.scale(img_temp, (new_width, new_height))
         self.floor_rect = self.floor_surf.get_rect(topleft=(0, 0))
-        
+
+        # Collision Config
+        self.walls = []
+        self.obstacle_sprites = pygame.sprite.Group()
+
+        layout = import_csv_layout('src/sprites/map/map_scene1_walls.csv')
+
+        DESLOCAMENTO_X = 5 * TILESIZE * SCALE_FACTOR
+        DESLOCAMENTO_Y = 0 
+
+        for row_index, row in enumerate(layout):
+            for col_index, val in enumerate(row):
+                
+                if val != '-1':
+
+                    # It calculates the position X and Y on the scaled world
+                    x = col_index * TILESIZE * SCALE_FACTOR + DESLOCAMENTO_X
+                    y = row_index * TILESIZE * SCALE_FACTOR + DESLOCAMENTO_Y
+
+                    # Tamanho final do bloco parede
+                    size = TILESIZE * SCALE_FACTOR
+
+                    # creates the rectangle and stores it on the list
+                    wall_rect = pygame.Rect(x, y, size, size)
+                    self.walls.append(wall_rect)
+
+
+
+
+
         # Instantiate the Player ("Edísio") at position (300, 300)
         self.player = Player("Edísio", 3550, 3600, "src/sprites/psg.png")
+
+        # Passing the wall to the Player
+        self.player.walls = self.walls
         
         # Instantiate the default UI
         self.instance_ui = UI()
@@ -76,7 +109,34 @@ class GameRunning(Scene):
         self.moeda_offset_y = 0    # Y offset for the "jump" effect
         self.flash_moeda = 0       # Timer for the color flash effect
         self.icon_scale = 1.0      # Scale for the icon pulse effect
+    
+    
+    def check_wall_collision(self, direction):
+        """
+        Verifica colisão com a lista self.walls e corrige a posição do player.
+        """
+        # collidelist retorna o índice da parede que tocou (ou -1 se nenhuma tocou)
+        
+        wall_index = self.player.rect.collidelist(self.walls)
+        
+        if wall_index != -1:
+            wall = self.walls[wall_index]
 
+            if direction == 'horizontal':
+                # Se estava indo para a DIREITA, trava o lado direito do player na esquerda da parede
+                if self.player.sprite_direction == 'right': 
+                    self.player.rect.right = wall.left
+                # Se estava indo para a ESQUERDA, trava o lado esquerdo do player na direita da parede
+                elif self.player.sprite_direction == 'left': 
+                    self.player.rect.left = wall.right
+            
+            if direction == 'vertical':
+                # Se estava indo para BAIXO
+                if self.player.sprite_direction == 'down':
+                    self.player.rect.bottom = wall.top
+                # Se estava indo para CIMA
+                elif self.player.sprite_direction == 'up':
+                    self.player.rect.top = wall.bottom
     def draw(self):
         self.display_surface.fill(pygame.Color('#25131a'))
         

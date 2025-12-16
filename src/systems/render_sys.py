@@ -1,6 +1,4 @@
 import pygame
-'''import src.systems.ui_sys as UI
-import src.objects.entity.obj_player as obj_player'''
 
 class RenderSystem:
 
@@ -24,9 +22,7 @@ class RenderSystem:
 
     # Use the render function when you want to clear the screen
     def render(self):
-        # Clear the screen with backgroundColor white
-        self.main_screen_surface.fill((255, 255, 255))
-
+    
         # Drawning sprites
         for sprite in self.render_group:
             # Pega a posição na tela baseada na câmera

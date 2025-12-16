@@ -18,6 +18,7 @@ LAYER_UI         = 4
 # ---------------------------------
 
 # Fonts ---------------------------------
+HOME_SCREEN_FONT = 'src/fonts/PixelifySans-Regular.ttf'
 BUTTONS_FONT = 'src/fonts/VT323-Regular.ttf'
 TITLES_FONT = 'src/fonts/BoldPixels.ttf'
 # ---------------------------------

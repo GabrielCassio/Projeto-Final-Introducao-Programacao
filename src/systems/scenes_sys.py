@@ -21,9 +21,6 @@ class ScenesSystem:
 
         # Defining default scene to the game
         self.current_scene = self.scenes['Game Home']
-        # Draw the Scene
-        self.current_scene.draw()
-        self.instance_render.render()
 
     def switch_scene(self, name_scene: str):
         '''
@@ -36,3 +33,5 @@ class ScenesSystem:
             Keep the current scene to update it
         '''
         self.current_scene.update()
+        self.current_scene.draw()
+        self.instance_render.render()

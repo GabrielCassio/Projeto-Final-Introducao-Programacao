@@ -10,9 +10,17 @@ class Player(Entity):
        # Acessing de parent of the Player class
        super().__init__(self, x, y, path_sprite)
 
-       # Initializating the sprite of player
-       self.load_sprite(x, y, path_sprite)
+       # Load the image
+       original_image = pygame.image.load(path_sprite).convert_alpha()
 
+       # Initializating the sprite of player
+       SCALE_FACTOR = 2.4 # Match the map scale
+       w, h = original_image.get_size()
+       self.image = pygame.transform.scale(original_image, (int(w * SCALE_FACTOR), int(h * SCALE_FACTOR)))
+       
+       # Create Rect based on the NEW size
+
+       self.rect = self.image.get_rect(topleft = (x, y))
 
        
        self.stats = {'health': 100, 'energy': 60, 'attack': 10, 'magic': 4, 'speed': 6}

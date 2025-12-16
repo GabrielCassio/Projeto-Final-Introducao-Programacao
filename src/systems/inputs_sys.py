@@ -20,6 +20,7 @@ class InputHandling:
 
         # Command instance
         move_command = None
+        
         # Descloc variables
         desloc_x, desloc_y = 0, 0
         if (self.pressed_buttons[pygame.K_UP] or self.pressed_buttons[pygame.K_w]):

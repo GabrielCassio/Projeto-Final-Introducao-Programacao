@@ -1,7 +1,9 @@
 import pygame
 
 # Importing scenes
-from src.scenes.scene_0 import GameHome
+from src.scenes.scene_0_0 import GameHome
+from src.scenes.scene_0_1 import GameHomeOptions
+from src.scenes.scene_0_2 import GameHomeCredits
 from src.scenes.scene_1 import GameRunning
 
 # Importing systems
@@ -13,12 +15,14 @@ class ScenesSystem:
         self.instance_render = RenderSystem()
         # Dictionary of Scene classes
         self.scenes = {
-            'Game Home': GameHome(self),
+            'Home Game': GameHome(self),
+            'Home Options': GameHomeOptions(self),
+            'Home Credits': GameHomeCredits(self),
             'Game Running': GameRunning(self),
         }
 
         # Defining default scene to the game
-        self.current_scene = self.scenes['Game Home']
+        self.current_scene = self.scenes['Home Game']
 
     def switch_scene(self, name_scene: str):
         '''

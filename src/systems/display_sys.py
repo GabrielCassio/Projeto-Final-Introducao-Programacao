@@ -28,4 +28,4 @@ class DisplayConfiguration():
         self.dimension_ar = self.all_dimensions_ar[self.current_ar]
         print(self.dimension_ar)
 
-        self.surface_screen = pygame.display.set_mode(self.dimension_ar) # Set of AR Game to default 1280x720
+        self.surface_screen = pygame.display.set_mode(self.dimension_ar, pygame.RESIZABLE | pygame.SCALED) # Set of AR Game to default 1280x720

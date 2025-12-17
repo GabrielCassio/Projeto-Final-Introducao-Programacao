@@ -38,9 +38,6 @@ class App:
         self.instance_render.initialization(self.instance_display_config.surface_screen)
 
         # \\\\\\\\\\ Initialization Scenes///////////////
-        self.instance_collision = collision_system.Collision()
-
-        # \\\\\\\\\\ Initialization Scenes///////////////
         self.instance_scenes = scenes_system.ScenesSystem()
 
         # \\\\\\\\\\ Initialization Inputs Handling ///////////////

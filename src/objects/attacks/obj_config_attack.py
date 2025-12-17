@@ -1,0 +1,6 @@
+# Player Damage Attack -----------
+PLAYER_CRIT_CHANCE = 0.20
+PLAYER_CRIT_MULT = 2
+PLAYER_BASE_DAMAGE = 10
+PLAYER_CRIT_DAMAGE = PLAYER_BASE_DAMAGE * PLAYER_CRIT_MULT
+# --------------------------------

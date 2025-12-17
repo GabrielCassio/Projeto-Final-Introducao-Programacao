@@ -5,12 +5,20 @@ from src.scenes.scene_entity import Scene
 
 # Import systems
 from src.systems.ui_sys import UI
+from src.systems.collision_sys import CollisionSystem
 
-# Importing objects
+# Importing objects -------------------------------
+# Characters
 from src.objects.character.obj_player import Player
+from src.objects.enemies.boss import DemonSlimeBoss
+
+# Collectibles
 from src.objects.collectibles.obj_badge import Badge
 from src.objects.collectibles.obj_coin import Coin
 from src.objects.collectibles.obj_trophy import Trophy
+# ---------------------------------------------------
+
+# Importing Map
 from src.support import import_csv_layout
 
 # Importing settings
@@ -22,32 +30,34 @@ class GameRunning(Scene):
         Inherits from 'Scene', implying a scene management system exists.
     '''
     def __init__(self, scene_system):
-        # 1. Load the original image FIRST into a temporary variable
+        # -----------------------------------------------------------------------------
+        # Load the original image FIRST into a temporary variable
         img_temp = pygame.image.load('src/sprites/map/map_scene1.png').convert_alpha()
         
-        # 2. Get its original size (e.g., 800x600)
+        # Get its original size (e.g., 800x600)
         original_width, original_height = img_temp.get_size()
 
-        # 3. Define how many times you want to increase it (e.g., 4 times bigger)
+        # Define how many times you want to increase it (e.g., 4 times bigger)
         SCALE_FACTOR = 4.0 
         
         # The code calculates new sizes automatically, keeping the proportion
         new_width = int(original_width * SCALE_FACTOR)
         new_height = int(original_height * SCALE_FACTOR)
 
-        # 4. Now initialize the scene with the perfect calculated sizes
+        # Initialize the scene with the perfect calculated sizes
         super().__init__(scene_system, new_width, new_height)
-
         self.display_surface = pygame.display.get_surface()
 
-        # 5. Finally, create the scaled image using the calculated values
+        # Create the scaled image using the calculated values
         self.floor_surf = pygame.transform.scale(img_temp, (new_width, new_height))
         self.floor_rect = self.floor_surf.get_rect(topleft=(0, 0))
 
-        # Collision Config
+        # Walls Collision ---------------------------------------------
+    
+        # list of wall rectangles
         self.walls = []
-        self.obstacle_sprites = pygame.sprite.Group()
 
+        # Import the wall layout from CSV
         layout = import_csv_layout('src/sprites/map/map_scene1_walls.csv')
 
         DESLOCAMENTO_X = 5 * TILESIZE * SCALE_FACTOR
@@ -68,19 +78,39 @@ class GameRunning(Scene):
                     # creates the rectangle and stores it on the list
                     wall_rect = pygame.Rect(x, y, size, size)
                     self.walls.append(wall_rect)
+        # -----------------------------------------------------------------
 
-
-
-
+        # Collision Groups --------------------------------------------
+        # Creating sprite groups
+        self.obstacle_sprites = self.walls
+        self.visible_sprites = pygame.sprite.Group()
+        self.melee_sprites = pygame.sprite.Group()
+        self.projectile_sprites = pygame.sprite.Group()
+        self.enemy_sprites = pygame.sprite.Group()
+            
+         # Dictionary of sprite groups for collision system
+        self.sprite_groups = {
+            'all': self.visible_sprites,
+            'obstacles': self.obstacle_sprites,
+            'melee': self.melee_sprites,
+            'projectiles': self.projectile_sprites,
+            'enemies': self.enemy_sprites 
+        }
+        # --------------------------------------------------------------
 
         # Instantiate the Player ("Edísio") at position (300, 300)
-        self.player = Player("Edísio", 3550, 3600, "src/sprites/psg.png")
+        self.player = Player("Edísio", 3550, 3600, self.sprite_groups)
 
         # Passing the wall to the Player
         self.player.walls = self.walls
         
         # Instantiate the default UI
         self.instance_ui = UI()
+
+        #  --------------------------------------------------------------
+        # Collision system instance
+        self.instance_collision_player = CollisionSystem(self.player, self.sprite_groups)
+        # --------------------------------------------------------------
 
         # Font configuration
         self.fonte_moeda = pygame.font.SysFont('arial', 22, bold=True)
@@ -102,7 +132,7 @@ class GameRunning(Scene):
         self.boss_morto = False      # Is boss dead?
         self.cracha_coletado = False # Is badge collected?
         
-        # --- UI Animation Variables ---
+        # UI animation variables
         self.moedas_reais = 0      # Actual coin count
         self.moedas_animadas = 0.0 # Visual coin count (for smooth animation)
         
@@ -113,7 +143,7 @@ class GameRunning(Scene):
     
     def check_wall_collision(self, direction):
         """
-        Verifica colisão com a lista self.walls e corrige a posição do player.
+            Verify the collision of the player with walls in a given direction.
         """
         # collidelist retorna o índice da parede que tocou (ou -1 se nenhuma tocou)
         
@@ -170,7 +200,7 @@ class GameRunning(Scene):
 
     def draw_custom_hud(self):
         """
-        Helper method to draw the specific HUD for coins and icons.
+            Method to draw the specific HUD for coins and icons.
         """
         WIDTH, HEIGHT = self.display_surface.get_size()
 
@@ -219,16 +249,13 @@ class GameRunning(Scene):
             pygame.draw.circle(self.display_surface, (20, 20, 30), (cx_cracha, cy_cracha), 34)
             pygame.draw.circle(self.display_surface, (120, 200, 255), (cx_cracha, cy_cracha), 12)
 
-        ''' # Debug Info Text
-        info = self.fonte_info.render('B -> kill boss (test)', True, (160, 160, 160))
-        self.display_surface.blit(info, (12, 12))'''
-
     def handle_input(self):
         self.instance_input.update()
         
         # Execute movement and combat commands
         self.instance_input.execute_movement_command(self.player)
-        self.instance_input.execute_attack_command(self.player)
+        self.instance_input.execute_melee_attack_command(self.player)
+        self.instance_input.execute_ranged_attack_command(self.player)
         self.instance_input.execute_dash_command(self.player)
 
         # --- DEBUG / CHEAT ---
@@ -278,7 +305,6 @@ class GameRunning(Scene):
             if self.Trophy.ativo and self.player.rect.colliderect(self.Trophy.rect):
                 self.Trophy.iniciar_coleta() # Start collection logic
 
-        # --- UI MATH / LERP (Linear Interpolation) ---
         # Smoothly move the displayed number towards the real number
         self.moedas_animadas += (self.moedas_reais - self.moedas_animadas) * 0.15
         

@@ -1,7 +1,7 @@
 # Main file of template by PyGame
 
 # Config paths libs
-import pathlib, sys
+import pathlib, sys  
 # Defining source as root
 sourceDir = pathlib.Path(__file__).resolve().parent.parent
 sys.path.append(str(sourceDir))
@@ -21,6 +21,6 @@ while (running):
             running = False
 
     instance_app_run.update()
-
+ 
 # Exit the game
 pygame.quit()

@@ -650,63 +650,142 @@ class DemonBoss(pygame.sprite.Sprite):
         if hitbox.colliderect(self.player.rect):
              if hasattr(self.player, "take_damage"): self.player.take_damage(60)
 
-class BossTransition(pygame.sprite.Sprite):
-    def __init__(self, pos, groups, player, screen_rect):
-        super().__init__()
-        if groups and "all" in groups: groups["all"].add(self)
-        
-        self.groups_ref = groups
-        self.player = player
-        self.screen_rect = screen_rect
-        
-        # --- CARREGAMENTO DA ANIMAÇÃO ---
-        # Usa a estrutura de busca que você já tem no arquivo
-        base = os.path.dirname(os.path.abspath(__file__))
-        root = _resolve_boss_root(base)
-        sheets_root = _find_folder_recursive(root, "sprite_file")
-        
-        # Configuração: Usando a explosão como transição
-        # Se preferir a metamorfose de novo, mude "circle_explosion.png" para "metamorforsis.png"
-        filename = "circle_explosion.png" 
-        cols = 11      # A explosão tem 11 colunas conforme seu config
-        scale = 3.0    # Escala grande para cobrir a área da transformação
-        
-        path = _find_file_recursive(sheets_root, filename)
-        
-        if path:
-            self.frames = _slice_sheet(path, cols, 1, scale)
-        else:
-            # Fallback de segurança (invisível) caso não ache a imagem
-            self.frames = [pygame.Surface((10,10), pygame.SRCALPHA)]
-
-        self.frame_index = 0
-        self.image = self.frames[0]
-        self.rect = self.image.get_rect(center=pos)
-        
-        self.last_update = pygame.time.get_ticks()
-        self.frame_delay = 100 # Velocidade da animação (quanto menor, mais rápido)
-
     def update(self):
         now = pygame.time.get_ticks()
         
-        if now - self.last_update > self.frame_delay:
-            self.last_update = now
-            self.frame_index += 1
-            
-            if self.frame_index < len(self.frames):
-                self.image = self.frames[self.frame_index]
-                self.rect = self.image.get_rect(center=self.rect.center)
-            else:
-                # --- FIM DA ANIMAÇÃO: NASCE O BOSS ---
-                if self.groups_ref:
-                    # O DemonBoss nasce exatamente onde a explosão terminou
-                    boss = DemonBoss(self.rect.midbottom, self.player, self.groups_ref, self.screen_rect)
+        hp_pct = self.current_hp / self.max_hp
+        hp_loss = 1.0 - hp_pct
+        self.speed = DEMON_STATS["speed_base"] + (DEMON_STATS["speed_max"] - DEMON_STATS["speed_base"]) * hp_loss
+        
+        self._manage_external_waves(hp_pct, now)
+
+        if self.explosion_trigger_time > 0 and now >= self.explosion_trigger_time:
+            for pos in self.pending_explosions:
+                CircleExplosion(pos, self.special_anims["explosion"], DEMON_STATS["explosion_damage"], self.groups_ref)
+            self.pending_explosions.clear()
+            self.explosion_trigger_time = 0
+
+        if self.is_jumping:
+            if now - self.last_anim > 80:
+                self.last_anim = now
+                if self.state == "jump_start":
+                    self.frame_index += 1
+                    progress = self.frame_index / 6.0
+                    self.jump_visual_offset = -int(DEMON_STATS["jump_max_height"] * progress)
+                    if self.frame_index > 5: 
+                        self.state = "jump_air"; self.frame_index = 6
+                        self.jump_visual_offset = -DEMON_STATS["jump_max_height"]
+
+                elif self.state == "jump_air":
+                    self.frame_index += 1
+                    self.jump_visual_offset = -DEMON_STATS["jump_max_height"]
+                    if (now - self.last_jump_time) > 1500:
+                        self.state = "jump_land"; self.frame_index = 12
+                    elif self.frame_index > 11: 
+                        self.frame_index = 6
+                
+                elif self.state == "jump_land":
+                    self.frame_index += 1
+                    land_progress = (self.frame_index - 12) / 5.0
+                    self.jump_visual_offset = -int(DEMON_STATS["jump_max_height"] * (1.0 - land_progress))
+                    if self.frame_index == 14: self._perform_land_impact()
                     
-                    if "all" in self.groups_ref: self.groups_ref["all"].add(boss)
-                    if "enemies" in self.groups_ref: self.groups_ref["enemies"].add(boss)
-                
-                self.kill()
-                
+                    if self.frame_index >= 17: 
+                        self.is_jumping = False
+                        self.state = "cooldown_chase"
+                        self.cooldown_end_time = now + 1500
+                        self.frame_index = 0
+                        self.jump_visual_offset = 0
+                        self.frames = self.anims["idle"]
+                        self.rect.bottom = self.ground_anchor
+                        return
+
+            jump_frames = self.special_anims.get("jump", [])
+            idx = min(self.frame_index, len(jump_frames)-1)
+            if jump_frames:
+                img = jump_frames[idx]
+                img = pygame.transform.flip(img, self.facing_right, False)
+                self.image = img
+                self.rect.bottom = self.ground_anchor + int(self.jump_visual_offset)
+            return
+
+        current_jump_cd = DEMON_STATS["jump_cooldown_max"] - (
+            (DEMON_STATS["jump_cooldown_max"] - DEMON_STATS["jump_cooldown_min"]) * hp_loss
+        )
+
+        if not self.is_jumping and self.state in ["chase", "idle"]:
+            if now - self.last_jump_time > current_jump_cd:
+                self._start_jump(); return
+
+        STATE_TO_ANIM = {
+            "idle": "idle", "chase": "walk", "cooldown_chase": "walk",
+            "pre_attack": "idle", "attacking": "cleave",
+            "take_hit": "take_hit", "death": "death"
+        }
+        anim_key = STATE_TO_ANIM.get(self.state, "idle")
+        frames = self.anims.get(anim_key, self.anims["idle"])
+        
+        if self.frames != frames: self.frames = frames; self.frame_index = 0
+        
+        if now - self.last_anim > 100:
+            self.last_anim = now
+            if self.state == "death":
+                if self.frame_index < len(frames)-1: self.frame_index += 1
+                else: self.kill(); return
+            elif self.state == "take_hit":
+                if self.frame_index < len(frames)-1: self.frame_index += 1
+                else: self.state = "chase"
+            elif self.state == "attacking":
+                 if self.frame_index < len(frames)-1: 
+                     self.frame_index += 1
+                     if self.frame_index == len(frames)//2: self._deal_damage()
+                 else: 
+                     self.state = "cooldown_chase"
+                     self.cooldown_end_time = now + DEMON_STATS["attack_cooldown_ms"]
+            else:
+                self.frame_index = (self.frame_index + 1) % len(frames)
+
+        if self.state == "chase":
+            p_vec = pygame.Vector2(self.player.rect.center)
+            m_vec = pygame.Vector2(self.rect.center)
+            diff = p_vec - m_vec
+            dist = diff.length()
+            if dist < DEMON_STATS["attack_range"]:
+                self.state = "pre_attack"; self.charge_start_time = now
+                if dist > 0: self.attack_vector = diff.normalize()
+                else: self.attack_vector = pygame.Vector2(1,0)
+                hitbox = pygame.Rect(0,0, DEMON_STATS["attack_w"], DEMON_STATS["attack_h"])
+                hitbox.center = m_vec + self.attack_vector * DEMON_STATS["attack_offset"]
+                DangerIndicator(hitbox, DEMON_STATS["charge_time_min"], self.groups_ref)
+            else:
+                if dist > 0:
+                    direction = diff.normalize()
+                    if direction.x != 0: self.facing_right = direction.x > 0
+                    self.rect.center += direction * self.speed
+        
+        elif self.state == "pre_attack":
+            if now - self.charge_start_time > DEMON_STATS["charge_time_min"]:
+                self.state = "attacking"; self.frame_index = 0
+        
+        elif self.state == "cooldown_chase":
+            p_vec = pygame.Vector2(self.player.rect.center)
+            m_vec = pygame.Vector2(self.rect.center)
+            diff = p_vec - m_vec
+            if diff.length() > 0:
+                direction = diff.normalize()
+                if direction.x != 0: self.facing_right = direction.x > 0
+                self.rect.center += direction * (self.speed * 0.5)
+            if now > self.cooldown_end_time: self.state = "chase"
+
+        if self.frame_index >= len(self.frames): self.frame_index = 0
+        
+        img = self.frames[self.frame_index]
+        img = pygame.transform.flip(img, self.facing_right, False)
+        old_center = self.rect.center
+        self.image = img
+        self.rect = self.image.get_rect(center=old_center)
+        self.mask = pygame.mask.from_surface(self.image)
+
 # =========================
 # FASE 1: SLIME BOSS
 # =========================
@@ -807,79 +886,79 @@ class DemonSlimeBoss(pygame.sprite.Sprite):
             self.knockback_force *= 0
 
     def update(self):
-            self.check_activation()
+        # 1. Verifica se o player ativou o boss
+        self.check_activation()
 
-            if not self.active and not self.is_dying:
-                return
+        # Se não está ativo e não está morrendo, não faz nada
+        if not self.active and not self.is_dying:
+            return
 
-            now = pygame.time.get_ticks()
+        now = pygame.time.get_ticks()
+
+        # Animação (usa 100ms de delay)
+        if now - self.last_anim > 100:
+            self.last_anim = now
+            self.frame_index += 1
             
-            # --- FÍSICA E MOVIMENTO ---
-            if not self.is_dying:
-                # Calcula o pulo (apenas visual)
-                self.hop_offset = abs(math.sin(now * 0.015)) * -15
+            # Pega a lista de animação atual
+            current_anim_list = self.anims.get(self.state, self.anims["walk"])
+            
+            # Verifica se a animação acabou
+            if self.frame_index >= len(current_anim_list):
                 
-                # Aplica movimento na hitbox_pos (Posição REAL)
-                if self.knockback_force.length() > 0.5:
-                    self.hitbox_pos += self.knockback_force
-                    self.knockback_force *= 0.85 
-                else:
-                    target = pygame.Vector2(self.player.rect.center)
-                    # Move em direção ao player
-                    diff = target - self.hitbox_pos
-                    speed = 1.2
+                # --- LÓGICA DE TRANSIÇÃO (Slime -> Demônio) ---
+                if self.state == "death":
+                    # O Slime terminou de morrer. Nasce o Demônio IMEDIATAMENTE.
+                    # Cria o DemonBoss na mesma posição (midbottom)
+                    boss = DemonBoss(self.rect.midbottom, self.player, self.groups_ref, self.screen_rect)
                     
-                    if diff.length() > 0:
-                        self.hitbox_pos += diff.normalize() * speed
-                    
-                    if self.player.rect.centerx > self.hitbox_pos.x: self.facing_right = True
-                    else: self.facing_right = False
-
-            # --- ANIMAÇÃO ---
-            new_state = "walk"
-            if self.is_dying: new_state = "death"
-            elif now < self.flash_until: new_state = "hited"
-            
-            if new_state != self.state:
-                self.state = new_state
-                self.frame_index = 0
-                self.last_anim = now
-            
-            frames = self.anims.get(self.state, self.anims["walk"])
-            
-            if now - self.last_anim > 100:
-                self.last_anim = now
-                
-                # --- LÓGICA DE TRANSIÇÃO AQUI ---
-                if self.is_dying and self.frame_index >= len(frames)-1:
-                    # O Slime terminou de morrer. Agora invocamos a transição.
                     if self.groups_ref:
-                        # Cria o efeito visual que vai invocar o Boss Real depois de 2s
-                        # Certifique-se de ter a classe BossTransition no arquivo
-                        BossTransition(self.rect.center, self.groups_ref, self.player, self.screen_rect)
+                        if "all" in self.groups_ref: self.groups_ref["all"].add(boss)
+                        if "enemies" in self.groups_ref: self.groups_ref["enemies"].add(boss)
                     
-                    self.kill() # Remove o Slime
-                    return
+                    # Remove barra de vida antiga e o objeto Slime
+                    if hasattr(self, 'health_bar'): self.health_bar.kill() 
+                    self.kill()
+                    return # Sai da função imediatamente
                 
-                self.frame_index = (self.frame_index + 1) % len(frames)
-            
-            # --- DESENHO FINAL ---
-            if frames:
-                img = frames[self.frame_index].copy() # .copy() é importante se for aplicar filtros
+                elif self.state == "hited":
+                    self.state = "walk"
+                    self.frame_index = 0
                 
-                # Aplica o flash vermelho se tomou dano (e não está morrendo)
-                if now < self.flash_until and not self.is_dying:
-                    img.fill((255, 50, 50, 0), special_flags=pygame.BLEND_RGBA_ADD)
+                else:
+                    # Loop normal (andar)
+                    self.frame_index = 0
 
-                if not self.facing_right: 
-                    img = pygame.transform.flip(img, True, False)
-                
-                self.image = img
-                
-                # 1. Posiciona o rect onde o boss REALMENTE está (Hitbox Lógica)
-                self.rect = self.image.get_rect(center=(int(self.hitbox_pos.x), int(self.hitbox_pos.y)))
-                
-                # 2. SÓ AGORA aplicamos o pulo visual no rect (sem afetar o hitbox_pos)
-                # Isso garante que a colisão continue no chão, mas o sprite pule
-                if not self.is_dying:
-                    self.rect.y += int(self.hop_offset)
+        # --- LÓGICA DE MOVIMENTO (Só se não estiver morrendo) ---
+        if not self.is_dying:
+            if self.state == "walk":
+                # Aplica o knockback (empurrão)
+                self.hitbox_pos += self.knockback_force
+                self.knockback_force *= 0.8 
+
+                # Persegue o player
+                target = pygame.Vector2(self.player.rect.center)
+                diff = target - self.hitbox_pos
+                if diff.length() > 0:
+                    direction = diff.normalize()
+                    self.hitbox_pos += direction * 2.5 # Velocidade do Slime
+                    
+                    # Ajusta o lado que está olhando
+                    if direction.x != 0:
+                        self.facing_right = direction.x > 0
+
+        # --- ATUALIZAÇÃO VISUAL ---
+        current_anim_list = self.anims.get(self.state, self.anims["walk"])
+        
+        # Proteção para índice fora do limite
+        if self.frame_index >= len(current_anim_list): 
+            self.frame_index = 0
+        
+        image = current_anim_list[self.frame_index]
+        
+        # Espelhamento
+        if not self.facing_right:
+            image = pygame.transform.flip(image, True, False)
+            
+        self.image = image
+        self.rect = self.image.get_rect(center=(int(self.hitbox_pos.x), int(self.hitbox_pos.y)))

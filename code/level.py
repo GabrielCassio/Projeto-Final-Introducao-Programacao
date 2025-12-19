@@ -9,6 +9,7 @@ from weapon import Weapon
 from cracha import Cracha
 from ui import UI
 from particle import Particle
+from tile import Wall, Collectible
 
 class Level:
     def __init__(self, surface):
@@ -72,21 +73,29 @@ class Level:
             )
     
     def trigger_death_logic(self, pos, particle_type):
-
         self.trigger_particles(pos, amount=5, color='grey')
-
-        # Lógica de Drop (RNG)
-        # 50% de chance de não dropar nada
-        # 30% de chance de dropar Moeda
-        # 20% de chance de dropar Coração
+        
+        # --- NOVA LÓGICA DE DROP (RNG) ---
         rng = random.randint(0, 100)
         
-        if rng < 50: 
-            pass # Azar, não dropou nada
-        elif rng < 80: # 50 a 79 (30%)
-            Collectible(pos, [self.visible_sprites, self.item_sprites], 'coin')
-        else: # 80 a 100 (20%)
+        # 0 a 15: Nada (15% de chance de não cair nada -> Antes era 50%)
+        # 16 a 35: Coração (20% de chance)
+        # 36 a 100: DINHEIRO (65% de chance!)
+        
+        if rng < 15:
+            pass # Nada acontece
+        elif rng < 35:
             Collectible(pos, [self.visible_sprites, self.item_sprites], 'heart')
+        else:
+            # Caiu dinheiro! Mas qual tipo?
+            coin_rng = random.randint(0, 100)
+            
+            if coin_rng < 60: # 60% de ser moeda normal (1)
+                Collectible(pos, [self.visible_sprites, self.item_sprites], 'coin')
+            elif coin_rng < 90: # 30% de ser moeda Vermelha (5)
+                Collectible(pos, [self.visible_sprites, self.item_sprites], 'coin_red')
+            else: # 10% de ser moeda Verde (10)
+                Collectible(pos, [self.visible_sprites, self.item_sprites], 'coin_green')
 
     def trigger_particles(self, pos, amount=10, color='red'):
         for i in range(amount):
@@ -136,15 +145,20 @@ class Level:
                 self.player.has_cracha = True
                 print("ITEM COLETADO!")
             
-            # --- NOVOS TIPOS ---
             elif item.item_type == 'heart':
-                self.player.heal(20) # Cura 20 de vida
+                self.player.heal(20)
                 self.trigger_particles(self.player.rect.center, 5, 'red')
                 
+            # --- LÓGICA DOS VALORES ---
             elif item.item_type == 'coin':
                 self.player.coins += 1
-                print(f"Moedas: {self.player.coins}")
-                self.trigger_particles(self.player.rect.center, 5, 'yellow')
+                self.trigger_particles(self.player.rect.center, 5, 'gold')
+            elif item.item_type == 'coin_red':
+                self.player.coins += 5
+                self.trigger_particles(self.player.rect.center, 8, '#ff4444')
+            elif item.item_type == 'coin_green':
+                self.player.coins += 10
+                self.trigger_particles(self.player.rect.center, 12, '#44ff44')
 
     def input_debug(self):
         keys = pygame.key.get_pressed()
@@ -271,37 +285,6 @@ class Level:
 # Classes Auxiliares
 # ==========================================
 
-class Collectible(pygame.sprite.Sprite):
-    def __init__(self, pos, groups, item_type):
-        super().__init__(groups)
-        self.item_type = item_type
-        
-        # Placeholder Gráfico (Caso não tenha imagem, usa cor)
-        self.image = pygame.Surface((24, 24))
-        
-        if self.item_type == 'cracha':
-             # Tenta carregar imagem ou usa Gold
-            self.image.fill('gold') 
-        elif self.item_type == 'heart':
-            self.image.fill('red')
-            # Desenhar um formato simples de cruz ou usar imagem real
-            pygame.draw.rect(self.image, 'white', (8, 4, 8, 16))
-            pygame.draw.rect(self.image, 'white', (4, 8, 16, 8))
-        elif self.item_type == 'coin':
-            self.image.fill('yellow')
-            pygame.draw.circle(self.image, 'orange', (12,12), 10, 2)
-            
-        self.rect = self.image.get_rect(center=pos)
-        self.hitbox = self.rect.inflate(-10, -10)
-        self.start_y = self.rect.centery
-        self.float_speed = 0.005
-        self.float_range = 5 
-    
-    def update(self, dt):
-        # Efeito de flutuar
-        current_time = pygame.time.get_ticks()
-        offset = math.sin(current_time * self.float_speed) * self.float_range
-        self.rect.centery = self.start_y + offset
 
 class YSortCameraGroup(pygame.sprite.Group):
     def __init__(self, surface):

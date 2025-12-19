@@ -9,7 +9,7 @@ from weapon import Weapon
 from cracha import Cracha
 from ui import UI
 from particle import Particle, FloatingText
-from tile import Wall, Collectible
+from tile import Wall, Collectible, FireBarrier
 
 class Level:
     def __init__(self, surface):
@@ -100,6 +100,44 @@ class Level:
     def trigger_particles(self, pos, amount=10, color='red'):
         for i in range(amount):
             Particle(pos, [self.visible_sprites, self.particle_sprites], color)
+    
+    def check_barrier_interaction(self):
+        # Verifica se a barreira ainda existe
+        if hasattr(self, 'fire_barrier') and self.fire_barrier.alive():
+            
+            # Checa colisão com margem de segurança
+            if self.player.hitbox.colliderect(self.fire_barrier.hitbox.inflate(10, 10)):
+                
+                cost = 30 # Defini o custo aqui para ficar fácil de mudar depois
+                
+                # SUCESSO: Tem almas suficientes
+                if self.player.souls >= cost:
+                    self.player.souls -= cost
+                    self.fire_barrier.kill() 
+                    
+                    self.trigger_particles(self.fire_barrier.rect.center, 20, 'orange')
+                    # Texto menor (size=20)
+                    FloatingText(self.player.rect.center, "Caminho Aberto!", [self.visible_sprites], 'gold', 20)
+                    FloatingText(self.player.rect.center, f"-{cost} Almas", [self.visible_sprites], 'cyan', 15)
+                
+                # FALHA: Não tem almas
+                else:
+                    # Timer para não spammar o texto a cada frame (a cada 1 seg)
+                    if not hasattr(self, 'msg_timer'): self.msg_timer = 0
+                    
+                    if pygame.time.get_ticks() - self.msg_timer > 1000:
+                        
+                        # --- CÁLCULO DO QUE FALTA ---
+                        missing = cost - self.player.souls
+                        if missing == 1:
+                            msg = "Falta 1 Alma!"
+                        else:
+                            msg = f"Faltam {missing} Almas!"
+                        
+                        # Texto bem menor (size=15) e Branco
+                        FloatingText(self.player.rect.center, msg, [self.visible_sprites], 'white', 15)
+                        
+                        self.msg_timer = pygame.time.get_ticks()
 
     def player_attack_logic(self):
         if self.attack_sprites:
@@ -263,6 +301,8 @@ class Level:
         item_x = player_pos[0]
         item_y = player_pos[1] + 100 
         Collectible((item_x, item_y), [self.visible_sprites, self.item_sprites], 'cracha')
+        barrier_pos = (player_pos[0] + 16, player_pos[1] -240) 
+        self.fire_barrier = FireBarrier(barrier_pos, [self.visible_sprites, self.obstacle_sprites])
 
     def run(self, dt):
         self.input_debug()
@@ -286,6 +326,11 @@ class Level:
                         enemy.actions(self.player)
             
             self.ui.display(self.player)
+
+            try:
+                self.check_barrier_interaction()
+            except:
+                pass # Evita erro se a barreira não tiver sido criada ainda
             
             if self.debug:
                 debug_surf = pygame.font.Font(None, 20).render(f"FPS: {int(pygame.time.Clock().get_fps())} | ZOOM: {self.visible_sprites.zoom_scale:.2f}", True, 'white')

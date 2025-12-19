@@ -1,15 +1,14 @@
 # ui.py
 import pygame
 from settings import *
+from fonts import carregar_fonte_padrao
 
 class UI:
     def __init__(self):
         self.display_surface = pygame.display.get_surface()
         
-        try:
-            self.font = pygame.font.Font(UI_FONT, UI_FONT_SIZE)
-        except:
-            self.font = pygame.font.SysFont('arial', UI_FONT_SIZE)
+        tamanho = UI_FONT_SIZE if 'UI_FONT_SIZE' in globals() else 18
+        self.font = carregar_fonte_padrao(tamanho)
 
         # Barras
         self.health_bar_rect = pygame.Rect(10, 10, HEALTH_BAR_WIDTH, BAR_HEIGHT)

@@ -12,9 +12,9 @@ FRAME_H_DEFAULT = 72
 
 # FASE 1: Slime
 SLIME_SHEETS = {
-    "walk":  {"file": "slime_walk.png", "count": 8, "scale": 1.3},
-    "hited": {"file": "slime_hited.png", "count": 6, "scale": 1.3},
-    "death": {"file": "metamorforsis.png", "count": 32, "scale": 2.0}
+    "walk":  {"file": "slime_walk.png", "count": 8, "scale": 0.6},
+    "hited": {"file": "slime_hited.png", "count": 6, "scale": 0.6},
+    "death": {"file": "metamorforsis.png", "count": 32, "scale": 1.0}
 }
 
 # FASE 2: Demônio
@@ -34,7 +34,7 @@ SPECIAL_SHEETS_CONFIG = {
 }
 
 DEMON_STATS = {
-    "max_hp": 200,
+    "max_hp": 5000,
     "scale": 2.5, 
     "attack_range": 80,  
     "attack_w": 380, 
@@ -85,48 +85,43 @@ def _find_folder_recursive(start_path, target_folder_name):
 
 def _find_file_recursive(root_search, filename):
     if not root_search: return None
+    for root, dirs, files in os.walk(root_search):
+        for f in files:
+            if filename.lower() == f.lower(): return os.path.join(root, f)
+    return None
 
 def _resolve_boss_root(start_dir):
     """
-    Resolve o root da pasta do boss após a reorganização:
-      assets/graphics/enemy/boss/...
-    Busca a partir do diretório deste arquivo (code/) e sobe alguns níveis.
+    Resolve o root da pasta do boss após a reorganização.
     """
-    # 1) caminho direto (mais comum): ./assets/graphics/enemy/boss
+    # 1) caminho direto
     candidate = os.path.join(start_dir, "assets", "graphics", "enemy", "boss")
     if os.path.isdir(candidate):
         return candidate
 
-    # 2) sobe até 5 níveis procurando /assets/graphics/enemy/boss
+    # 2) sobe até 5 níveis
     cur = start_dir
     for _ in range(6):
         candidate = os.path.join(cur, "assets", "graphics", "enemy", "boss")
         if os.path.isdir(candidate):
             return candidate
         parent = os.path.dirname(cur)
-        if parent == cur:
-            break
+        if parent == cur: break
         cur = parent
 
-    # 3) fallback: procurar recursivamente por uma pasta "boss" dentro de assets/graphics/enemy
+    # 3) fallback: recursivo
     cur = start_dir
     for _ in range(6):
         enemy_root = os.path.join(cur, "assets", "graphics", "enemy")
         if os.path.isdir(enemy_root):
             found = _find_folder_recursive(enemy_root, "boss")
-            if found:
-                return found
+            if found: return found
         parent = os.path.dirname(cur)
-        if parent == cur:
-            break
+        if parent == cur: break
         cur = parent
 
-    # 4) último fallback: comportamento antigo (procura a partir do code/)
+    # 4) último fallback
     return start_dir
-    for root, dirs, files in os.walk(root_search):
-        for f in files:
-            if filename.lower() == f.lower(): return os.path.join(root, f)
-    return None
 
 def _slice_sheet(path, cols, rows=1, scale=1.0):
     if not path or not os.path.isfile(path): 
@@ -155,29 +150,25 @@ def _load_frames_from_folder(root_dir, folder_fragment, scale=1.0):
         if target: break
     if not target: return [pygame.Surface((64,64))]
     frames = []
-    for f in sorted(os.listdir(target)):
-        if f.endswith(".png"):
-            try:
-                img = pygame.image.load(os.path.join(target, f)).convert_alpha()
-                if scale != 1.0:
-                    w, h = img.get_size()
-                    img = pygame.transform.smoothscale(img, (int(w*scale), int(h*scale)))
-                frames.append(img)
-            except: pass
-    return frames
+    if os.path.isdir(target):
+        for f in sorted(os.listdir(target)):
+            if f.endswith(".png"):
+                try:
+                    img = pygame.image.load(os.path.join(target, f)).convert_alpha()
+                    if scale != 1.0:
+                        w, h = img.get_size()
+                        img = pygame.transform.smoothscale(img, (int(w*scale), int(h*scale)))
+                    frames.append(img)
+                except: pass
+    return frames if frames else [pygame.Surface((64,64))]
 
 # =========================
 # CLASSES VISUAIS (UI & PROJÉTEIS)
 # =========================
 
 class BossHealthBar(pygame.sprite.Sprite):
-    """ 
-    Barra de Vida Estilo Boss Fight (Dark Souls / Elden Ring)
-    Fica fixa na parte inferior da tela e só aparece se o player estiver perto.
-    """
     def __init__(self, boss, groups):
         super().__init__()
-        # Adiciona preferencialmente ao grupo de UI, senão 'all'
         if groups:
             if "ui" in groups: groups["ui"].add(self)
             elif "all" in groups: groups["all"].add(self)
@@ -185,47 +176,45 @@ class BossHealthBar(pygame.sprite.Sprite):
         self.boss = boss
         self.screen_rect = boss.screen_rect
         
-        # Configurações Visuais
-        self.bar_width = 600  # Bem larga
-        self.bar_height = 14  # Fina e elegante
-        self.activation_distance = 800 # Distância para aparecer
+        self.bar_width = 600 
+        self.bar_height = 14 
+        
+        # Não precisamos mais de 'activation_distance' aqui na UI, 
+        # quem controla isso agora é o próprio Boss.
         
         self.image = pygame.Surface((self.bar_width, self.bar_height), pygame.SRCALPHA)
         self.rect = self.image.get_rect()
 
     def update(self):
+        # 1. Se o boss morreu, tchau barra
         if not self.boss.alive():
-            self.kill(); return
+            self.kill()
+            return
 
-        # 1. Verifica Distância
-        p_pos = pygame.Vector2(self.boss.player.rect.center)
-        b_pos = pygame.Vector2(self.boss.rect.center)
-        dist = p_pos.distance_to(b_pos)
+        # 2. VERIFICAÇÃO DE ATIVAÇÃO
+        # Usamos getattr para segurança, caso algum boss antigo não tenha 'active'
+        is_active = getattr(self.boss, 'active', True) 
 
-        # Se longe, desenha vazio (invisível)
-        if dist > self.activation_distance:
+        if not is_active:
+            # Se o boss está dormindo, a barra fica invisível
             self.image = pygame.Surface((0,0))
             return
 
-        # 2. Desenha a Barra
+        # 3. Desenho normal da barra
         self.image = pygame.Surface((self.bar_width, self.bar_height), pygame.SRCALPHA)
+        self.image.fill((0, 0, 0, 180)) # Fundo preto semi-transparente
         
-        # Fundo: Preto com transparência (Sutil)
-        self.image.fill((0, 0, 0, 120)) 
-        
-        # Cálculo da Vida
         hp_pct = max(0, self.boss.current_hp / self.boss.max_hp)
         fill_width = int(self.bar_width * hp_pct)
         
-        # Barra Vermelha (Tom mais sóbrio)
         if fill_width > 0:
+            # Cor vermelha sangue
             pygame.draw.rect(self.image, (180, 30, 30), (0, 0, fill_width, self.bar_height))
-            
-        # Borda Branca Fina
-        pygame.draw.rect(self.image, (200, 200, 200), (0, 0, self.bar_width, self.bar_height), 1)
-
-        # 3. Posicionamento Fixo na Tela (Bottom Center)
-        # Fica 50 pixels acima do fim da tela
+        
+        # Borda
+        pygame.draw.rect(self.image, (200, 200, 200), (0, 0, self.bar_width, self.bar_height), 2)
+        
+        # Posiciona no centro inferior da tela
         self.rect = self.image.get_rect(midbottom=(self.screen_rect.centerx, self.screen_rect.height - 50))
 
 class DamageNumber(pygame.sprite.Sprite):
@@ -246,7 +235,6 @@ class DamageNumber(pygame.sprite.Sprite):
 
     def _rerender(self):
         elapsed = pygame.time.get_ticks() - self.spawn
-        # Pisca em branco a cada 80ms
         if (elapsed // 80) % 2 == 0: color = self.color_white
         else: color = self.color_normal
 
@@ -277,7 +265,6 @@ class DangerIndicator(pygame.sprite.Sprite):
         self.duration = duration_ms
         self.spawn_time = pygame.time.get_ticks()
         self.image = pygame.Surface((self.rect.width, self.rect.height), pygame.SRCALPHA)
-
         self.radius = max(6, min(self.rect.width, self.rect.height) // 6)
 
     def update(self):
@@ -293,13 +280,10 @@ class DangerIndicator(pygame.sprite.Sprite):
         border_alpha = int(24 + 36 * t)  
 
         self.image.fill((0, 0, 0, 0))
-
         r = self.image.get_rect()
 
         pygame.draw.rect(self.image, (255, 0, 0, fill_alpha), r, 0, border_radius=self.radius)
         pygame.draw.rect(self.image, (255, 0, 0, border_alpha), r, 1, border_radius=self.radius)
-
-
 
 class ShockwavePush(pygame.sprite.Sprite):
     def __init__(self, center_pos, max_radius, player, groups):
@@ -580,7 +564,6 @@ class DemonBoss(pygame.sprite.Sprite):
                 img = jump_frames[idx]
                 img = pygame.transform.flip(img, self.facing_right, False)
                 self.image = img
-                self.rect.bottom = self.ground_anchor 
                 self.rect.bottom = self.ground_anchor + int(self.jump_visual_offset)
             return
 
@@ -667,6 +650,142 @@ class DemonBoss(pygame.sprite.Sprite):
         if hitbox.colliderect(self.player.rect):
              if hasattr(self.player, "take_damage"): self.player.take_damage(60)
 
+    def update(self):
+        now = pygame.time.get_ticks()
+        
+        hp_pct = self.current_hp / self.max_hp
+        hp_loss = 1.0 - hp_pct
+        self.speed = DEMON_STATS["speed_base"] + (DEMON_STATS["speed_max"] - DEMON_STATS["speed_base"]) * hp_loss
+        
+        self._manage_external_waves(hp_pct, now)
+
+        if self.explosion_trigger_time > 0 and now >= self.explosion_trigger_time:
+            for pos in self.pending_explosions:
+                CircleExplosion(pos, self.special_anims["explosion"], DEMON_STATS["explosion_damage"], self.groups_ref)
+            self.pending_explosions.clear()
+            self.explosion_trigger_time = 0
+
+        if self.is_jumping:
+            if now - self.last_anim > 80:
+                self.last_anim = now
+                if self.state == "jump_start":
+                    self.frame_index += 1
+                    progress = self.frame_index / 6.0
+                    self.jump_visual_offset = -int(DEMON_STATS["jump_max_height"] * progress)
+                    if self.frame_index > 5: 
+                        self.state = "jump_air"; self.frame_index = 6
+                        self.jump_visual_offset = -DEMON_STATS["jump_max_height"]
+
+                elif self.state == "jump_air":
+                    self.frame_index += 1
+                    self.jump_visual_offset = -DEMON_STATS["jump_max_height"]
+                    if (now - self.last_jump_time) > 1500:
+                        self.state = "jump_land"; self.frame_index = 12
+                    elif self.frame_index > 11: 
+                        self.frame_index = 6
+                
+                elif self.state == "jump_land":
+                    self.frame_index += 1
+                    land_progress = (self.frame_index - 12) / 5.0
+                    self.jump_visual_offset = -int(DEMON_STATS["jump_max_height"] * (1.0 - land_progress))
+                    if self.frame_index == 14: self._perform_land_impact()
+                    
+                    if self.frame_index >= 17: 
+                        self.is_jumping = False
+                        self.state = "cooldown_chase"
+                        self.cooldown_end_time = now + 1500
+                        self.frame_index = 0
+                        self.jump_visual_offset = 0
+                        self.frames = self.anims["idle"]
+                        self.rect.bottom = self.ground_anchor
+                        return
+
+            jump_frames = self.special_anims.get("jump", [])
+            idx = min(self.frame_index, len(jump_frames)-1)
+            if jump_frames:
+                img = jump_frames[idx]
+                img = pygame.transform.flip(img, self.facing_right, False)
+                self.image = img
+                self.rect.bottom = self.ground_anchor + int(self.jump_visual_offset)
+            return
+
+        current_jump_cd = DEMON_STATS["jump_cooldown_max"] - (
+            (DEMON_STATS["jump_cooldown_max"] - DEMON_STATS["jump_cooldown_min"]) * hp_loss
+        )
+
+        if not self.is_jumping and self.state in ["chase", "idle"]:
+            if now - self.last_jump_time > current_jump_cd:
+                self._start_jump(); return
+
+        STATE_TO_ANIM = {
+            "idle": "idle", "chase": "walk", "cooldown_chase": "walk",
+            "pre_attack": "idle", "attacking": "cleave",
+            "take_hit": "take_hit", "death": "death"
+        }
+        anim_key = STATE_TO_ANIM.get(self.state, "idle")
+        frames = self.anims.get(anim_key, self.anims["idle"])
+        
+        if self.frames != frames: self.frames = frames; self.frame_index = 0
+        
+        if now - self.last_anim > 100:
+            self.last_anim = now
+            if self.state == "death":
+                if self.frame_index < len(frames)-1: self.frame_index += 1
+                else: self.kill(); return
+            elif self.state == "take_hit":
+                if self.frame_index < len(frames)-1: self.frame_index += 1
+                else: self.state = "chase"
+            elif self.state == "attacking":
+                 if self.frame_index < len(frames)-1: 
+                     self.frame_index += 1
+                     if self.frame_index == len(frames)//2: self._deal_damage()
+                 else: 
+                     self.state = "cooldown_chase"
+                     self.cooldown_end_time = now + DEMON_STATS["attack_cooldown_ms"]
+            else:
+                self.frame_index = (self.frame_index + 1) % len(frames)
+
+        if self.state == "chase":
+            p_vec = pygame.Vector2(self.player.rect.center)
+            m_vec = pygame.Vector2(self.rect.center)
+            diff = p_vec - m_vec
+            dist = diff.length()
+            if dist < DEMON_STATS["attack_range"]:
+                self.state = "pre_attack"; self.charge_start_time = now
+                if dist > 0: self.attack_vector = diff.normalize()
+                else: self.attack_vector = pygame.Vector2(1,0)
+                hitbox = pygame.Rect(0,0, DEMON_STATS["attack_w"], DEMON_STATS["attack_h"])
+                hitbox.center = m_vec + self.attack_vector * DEMON_STATS["attack_offset"]
+                DangerIndicator(hitbox, DEMON_STATS["charge_time_min"], self.groups_ref)
+            else:
+                if dist > 0:
+                    direction = diff.normalize()
+                    if direction.x != 0: self.facing_right = direction.x > 0
+                    self.rect.center += direction * self.speed
+        
+        elif self.state == "pre_attack":
+            if now - self.charge_start_time > DEMON_STATS["charge_time_min"]:
+                self.state = "attacking"; self.frame_index = 0
+        
+        elif self.state == "cooldown_chase":
+            p_vec = pygame.Vector2(self.player.rect.center)
+            m_vec = pygame.Vector2(self.rect.center)
+            diff = p_vec - m_vec
+            if diff.length() > 0:
+                direction = diff.normalize()
+                if direction.x != 0: self.facing_right = direction.x > 0
+                self.rect.center += direction * (self.speed * 0.5)
+            if now > self.cooldown_end_time: self.state = "chase"
+
+        if self.frame_index >= len(self.frames): self.frame_index = 0
+        
+        img = self.frames[self.frame_index]
+        img = pygame.transform.flip(img, self.facing_right, False)
+        old_center = self.rect.center
+        self.image = img
+        self.rect = self.image.get_rect(center=old_center)
+        self.mask = pygame.mask.from_surface(self.image)
+
 # =========================
 # FASE 1: SLIME BOSS
 # =========================
@@ -676,116 +795,170 @@ class DemonSlimeBoss(pygame.sprite.Sprite):
         self.player = player
         self.groups_ref = groups
         self.screen_rect = screen_rect
-        self.spawn_pos = pygame.Vector2(screen_rect.centerx, screen_rect.centery)
         
+        # --- SPRITES ---
         base_dir = os.path.dirname(os.path.abspath(__file__))
         boss_root = _resolve_boss_root(base_dir)
-        # nova estrutura: assets/graphics/enemy/boss/... (boss_root já aponta para essa pasta)
-        # Se existir subpasta 'boss' ou 'boss_animations', usa ela; senão usa o próprio boss_root.
         ba_root = boss_root
         sub = _find_folder_recursive(boss_root, "boss")
         if sub: ba_root = sub
         else:
             sub = _find_folder_recursive(boss_root, "boss_animations")
             if sub: ba_root = sub
-        print(f"[Boss] Anim root (slime) -> {ba_root}")
+        
         self.anims = {}
-        p1 = _find_file_recursive(ba_root, SLIME_SHEETS["walk"]["file"])
-        self.anims["walk"] = _slice_sheet(p1, SLIME_SHEETS["walk"]["count"], scale=SLIME_SHEETS["walk"]["scale"])
-        p2 = _find_file_recursive(ba_root, SLIME_SHEETS["hited"]["file"])
-        self.anims["hited"] = _slice_sheet(p2, 6, scale=SLIME_SHEETS["hited"]["scale"])
-        p3 = _find_file_recursive(ba_root, SLIME_SHEETS["death"]["file"])
-        self.anims["death"] = _slice_sheet(p3, SLIME_SHEETS["death"]["count"], scale=SLIME_SHEETS["death"]["scale"])
+        try:
+            p1 = _find_file_recursive(ba_root, SLIME_SHEETS["walk"]["file"])
+            self.anims["walk"] = _slice_sheet(p1, SLIME_SHEETS["walk"]["count"], scale=SLIME_SHEETS["walk"]["scale"])
+        except: self.anims["walk"] = []
+
+        try:
+            p2 = _find_file_recursive(ba_root, SLIME_SHEETS["hited"]["file"])
+            self.anims["hited"] = _slice_sheet(p2, 6, scale=SLIME_SHEETS["hited"]["scale"])
+        except: self.anims["hited"] = []
+
+        try:
+            p3 = _find_file_recursive(ba_root, SLIME_SHEETS["death"]["file"])
+            self.anims["death"] = _slice_sheet(p3, SLIME_SHEETS["death"]["count"], scale=SLIME_SHEETS["death"]["scale"])
+        except: self.anims["death"] = []
         
         if not self.anims["walk"]: self.anims["walk"] = [pygame.Surface((50,50))]
         if not self.anims["hited"]: self.anims["hited"] = self.anims["walk"]
+        if not self.anims["death"]: self.anims["death"] = self.anims["walk"]
 
-        self.state = "walk"; self.max_hp = 40; self.current_hp = 40
-        self.frame_index = 0; self.last_anim = pygame.time.get_ticks()
+        # --- STATUS ---
+        self.state = "walk"
+        self.max_hp = 1000
+        self.current_hp = 1000
+        self.frame_index = 0
+        self.last_anim = pygame.time.get_ticks()
+        
         self.image = self.anims["walk"][0]
         self.rect = self.image.get_rect(center=(x,y))
         
+        self.hitbox_pos = pygame.Vector2(x, y)
+
         self.facing_right = True
         self.hop_offset = 0
         self.is_dying = False
         self.flash_until = 0
-        self.sight_start_time = 0
-        self.seen_player = False
         self.knockback_force = pygame.Vector2(0,0)
         
-        # Barra para o slime também
-        BossHealthBar(self, self.groups_ref)
+        # --- ATIVAÇÃO ---
+        self.active = False
+        self.activation_radius = 500  
+        
+        # Barra de Vida
+        self.health_bar = BossHealthBar(self, self.groups_ref)
+
+    def check_activation(self):
+        if self.active: return
+            
+        p_vec = pygame.Vector2(self.player.rect.center)
+        me_vec = self.hitbox_pos
+        dist = p_vec.distance_to(me_vec)
+        
+        if dist < self.activation_radius:
+            self.active = True
+            print("Boss ACORDOU!")
 
     def take_damage(self, amount, source_pos=None, crit=False):
         if self.is_dying: return
+        self.active = True
+        
         self.current_hp -= int(amount)
         self.flash_until = pygame.time.get_ticks() + 150
         
         if "all" in self.groups_ref: 
-            self.groups_ref["all"].add(DamageNumber(self.rect.centerx, self.rect.centery, amount, crit))
+            try: self.groups_ref["all"].add(DamageNumber(self.rect.centerx, self.rect.centery, amount, crit))
+            except: pass
             
         if source_pos:
-            push_dir = pygame.Vector2(self.rect.center) - pygame.Vector2(source_pos)
+            push_dir = self.hitbox_pos - pygame.Vector2(source_pos)
             if push_dir.length() == 0: push_dir = pygame.Vector2(1, 0)
             else: push_dir = push_dir.normalize()
-            self.knockback_force = push_dir * 30 
+            self.knockback_force = push_dir * 5
 
         if self.current_hp <= 0: 
-            self.is_dying = True; self.state = "death"; self.frame_index = 0; self.knockback_force *= 0
+            self.is_dying = True
+            self.state = "death"
+            self.frame_index = 0
+            self.knockback_force *= 0
 
     def update(self):
-        now = pygame.time.get_ticks()
-        if not self.is_dying:
-            self.hop_offset = abs(math.sin(now * 0.015)) * -10
-            
-            if self.knockback_force.length() > 0.5:
-                self.rect.center += self.knockback_force
-                self.knockback_force *= 0.85 
-            else:
-                if not self.seen_player:
-                    self.seen_player = True; self.sight_start_time = now
-                
-                time_watching = now - self.sight_start_time
-                if time_watching > 4000:
-                    target = self.player.rect.center; speed = 5.5
-                else:
-                    target = self.spawn_pos; speed = 2.0
-                
-                diff = pygame.Vector2(target) - pygame.Vector2(self.rect.center)
-                if diff.length() > 0:
-                    self.rect.center += diff.normalize() * speed
-                
-                if self.player.rect.centerx > self.rect.centerx: self.facing_right = True
-                else: self.facing_right = False
-            self.rect.clamp_ip(self.screen_rect)
+        # 1. Verifica se o player ativou o boss
+        self.check_activation()
 
-        new_state = "walk"
-        if self.is_dying: new_state = "death"
-        elif now < self.flash_until: new_state = "hited"
-        
-        if new_state != self.state:
-            self.state = new_state
-            self.frame_index = 0
-            self.last_anim = now
-        
-        frames = self.anims.get(self.state, self.anims["walk"])
+        # Se não está ativo e não está morrendo, não faz nada
+        if not self.active and not self.is_dying:
+            return
+
+        now = pygame.time.get_ticks()
+
+        # Animação (usa 100ms de delay)
         if now - self.last_anim > 100:
             self.last_anim = now
-            if self.is_dying and self.frame_index >= len(frames)-1:
-                if self.groups_ref:
-                    boss = DemonBoss(self.rect.midbottom, self.player, self.groups_ref, self.screen_rect)
-                    self.groups_ref["all"].add(boss)
-                    if "enemies" in self.groups_ref: self.groups_ref["enemies"].add(boss)
-                self.kill(); return
-            self.frame_index = (self.frame_index + 1) % len(frames)
-        
-        if self.frame_index >= len(frames): self.frame_index = 0
+            self.frame_index += 1
             
-        img = frames[self.frame_index].copy()
-        if now < self.flash_until: img.fill((255, 50, 50, 0), special_flags=pygame.BLEND_RGBA_ADD)
-        img = pygame.transform.flip(img, not self.facing_right, False)
+            # Pega a lista de animação atual
+            current_anim_list = self.anims.get(self.state, self.anims["walk"])
+            
+            # Verifica se a animação acabou
+            if self.frame_index >= len(current_anim_list):
+                
+                # --- LÓGICA DE TRANSIÇÃO (Slime -> Demônio) ---
+                if self.state == "death":
+                    # O Slime terminou de morrer. Nasce o Demônio IMEDIATAMENTE.
+                    # Cria o DemonBoss na mesma posição (midbottom)
+                    boss = DemonBoss(self.rect.midbottom, self.player, self.groups_ref, self.screen_rect)
+                    
+                    if self.groups_ref:
+                        if "all" in self.groups_ref: self.groups_ref["all"].add(boss)
+                        if "enemies" in self.groups_ref: self.groups_ref["enemies"].add(boss)
+                    
+                    # Remove barra de vida antiga e o objeto Slime
+                    if hasattr(self, 'health_bar'): self.health_bar.kill() 
+                    self.kill()
+                    return # Sai da função imediatamente
+                
+                elif self.state == "hited":
+                    self.state = "walk"
+                    self.frame_index = 0
+                
+                else:
+                    # Loop normal (andar)
+                    self.frame_index = 0
+
+        # --- LÓGICA DE MOVIMENTO (Só se não estiver morrendo) ---
+        if not self.is_dying:
+            if self.state == "walk":
+                # Aplica o knockback (empurrão)
+                self.hitbox_pos += self.knockback_force
+                self.knockback_force *= 0.8 
+
+                # Persegue o player
+                target = pygame.Vector2(self.player.rect.center)
+                diff = target - self.hitbox_pos
+                if diff.length() > 0:
+                    direction = diff.normalize()
+                    self.hitbox_pos += direction * 2.5 # Velocidade do Slime
+                    
+                    # Ajusta o lado que está olhando
+                    if direction.x != 0:
+                        self.facing_right = direction.x > 0
+
+        # --- ATUALIZAÇÃO VISUAL ---
+        current_anim_list = self.anims.get(self.state, self.anims["walk"])
         
-        self.image = img
-        old_center = self.rect.center
-        self.rect = self.image.get_rect(center=old_center)
-        if self.state == "walk": self.rect.y += int(self.hop_offset)
+        # Proteção para índice fora do limite
+        if self.frame_index >= len(current_anim_list): 
+            self.frame_index = 0
+        
+        image = current_anim_list[self.frame_index]
+        
+        # Espelhamento
+        if not self.facing_right:
+            image = pygame.transform.flip(image, True, False)
+            
+        self.image = image
+        self.rect = self.image.get_rect(center=(int(self.hitbox_pos.x), int(self.hitbox_pos.y)))

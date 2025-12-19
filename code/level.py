@@ -9,7 +9,7 @@ from player import Player
 from enemy import Enemy, EnemyProjectile, EnemyMeleeHitbox
 
 # Boss (slime -> demon)
-from boss import DemonSlimeBoss
+from boss import DemonSlimeBoss, DemonBoss
 
 from weapon import Weapon
 from cracha import Cracha
@@ -25,6 +25,35 @@ from tile import Wall, Collectible, FireBarrier, Merchant
 # quando não encontrar nenhum marcador.
 BOSS_FORCE_SPAWN_IF_NONE = True
 BOSS_FORCE_OFFSET = (700, 0)   # (dx, dy) relativo ao player_pos (tile do player)
+
+class MultiGroup:
+    """Proxy: add() repassa para vários grupos (útil pro boss colocar projétil em 'proj')."""
+    def __init__(self, *groups):
+        self._groups = [g for g in groups if g is not None]
+
+    def add(self, *sprites):
+        for g in self._groups:
+            g.add(*sprites)
+
+    def remove(self, *sprites):
+        for g in self._groups:
+            g.remove(*sprites)
+
+    def empty(self):
+        for g in self._groups:
+            g.empty()
+
+
+
+# ==============================
+# BOSS SPAWN SETTINGS
+# ==============================
+# Se o seu map_entities.csv NÃO tem 88/89, o boss nunca vai spawnar.
+# Para não depender do CSV, este fallback spawna 1 slime perto do player
+# quando não encontrar nenhum marcador.
+BOSS_FORCE_SPAWN_IF_NONE = True
+BOSS_FORCE_OFFSET = (700, 0)   # (dx, dy) relativo ao player_pos (tile do player)
+
 
 class MultiGroup:
     """Proxy: add() repassa para vários grupos (útil pro boss colocar projétil em 'proj')."""
@@ -146,12 +175,10 @@ class Level:
         if not pos_list:
             return
         screen_rect = self.display_surface.get_rect()
-        print(f"[Level] Boss spawn -> {len(pos_list)} posição(ões): {pos_list}")
         for (bx, by) in pos_list:
             slime = DemonSlimeBoss(bx, by, self.player, self.boss_groups, screen_rect)
             self.visible_sprites.add(slime)
             self.attackable_sprites.add(slime)
-
     # ---------------- Gameplay logic (mantive seu comportamento) ----------------
     def check_barrier_interaction(self):
         if hasattr(self, 'fire_barrier') and self.fire_barrier.alive():
@@ -335,7 +362,9 @@ class Level:
                         )
 
                     elif val in ('88', '89'):
-                        boss_spawns.append((final_x, final_y))
+                        center_x = final_x + (TILESIZE // 2)
+                        center_y = final_y + (TILESIZE // 2)
+                        boss_spawns.append((center_x, center_y))
 
         if not player_created:
             self.player = Player(
@@ -374,6 +403,14 @@ class Level:
 
         self._spawn_boss_slime(boss_spawns)
 
+        # 4) spawn boss
+        if not boss_spawns and BOSS_FORCE_SPAWN_IF_NONE:
+            dx, dy = BOSS_FORCE_OFFSET
+            boss_spawns = [(player_pos[0] + dx, player_pos[1] + dy)]
+            print(f"[Level] Nenhum 88/89 no CSV. Fallback spawn boss perto do player em {boss_spawns[0]}.")
+
+        self._spawn_boss_slime(boss_spawns)
+
     def run(self, dt):
         self.input_debug()
         self.input_zoom()
@@ -401,17 +438,8 @@ class Level:
 
             try:
                 self.check_barrier_interaction()
-            except:
-                pass # Evita erro se a barreira não tiver sido criada ainda
-            
-            if self.debug:
-                debug_surf = pygame.font.Font(None, 20).render(f"FPS: {int(pygame.time.Clock().get_fps())} | ZOOM: {self.visible_sprites.zoom_scale:.2f}", True, 'white')
-                self.display_surface.blit(debug_surf, (10, 50))
-
-
-# ==========================================
-# Classes Auxiliares
-# ==========================================
+            except Exception:
+                pass
 
 
 class YSortCameraGroup(pygame.sprite.Group):
@@ -420,7 +448,7 @@ class YSortCameraGroup(pygame.sprite.Group):
         self.display_surface = surface
 
         # Começa neutro (boss.py já tem scale próprio; zoom 2.5 vira escala dupla).
-        self.zoom_scale = 1.0
+        self.zoom_scale = 2.0
 
         self.screen_width = self.display_surface.get_size()[0]
         self.screen_height = self.display_surface.get_size()[1]

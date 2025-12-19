@@ -5,11 +5,9 @@ from settings import *
 from support import import_csv_layout
 from player import Player
 
-# Inimigos (não mexi)
 from enemy import Enemy, EnemyProjectile, EnemyMeleeHitbox
 
-# Boss (slime -> demon)
-from boss import DemonSlimeBoss, DemonBoss
+from boss import DemonSlimeBoss
 
 from weapon import Weapon
 from cracha import Cracha
@@ -18,23 +16,8 @@ from particle import Particle, FloatingText
 from tile import Wall, Collectible, FireBarrier, Merchant
 from shop import Shop
 
-# ==============================
-# BOSS SPAWN SETTINGS
-# ==============================
-# Se o seu map_entities.csv NÃO tem 88/89, o boss nunca vai spawnar.
-# Para não depender do CSV, este fallback spawna 1 slime perto do player
-# quando não encontrar nenhum marcador.
 BOSS_FORCE_SPAWN_IF_NONE = True
-BOSS_FORCE_OFFSET = (700, 0)   # (dx, dy) relativo ao player_pos (tile do player)
-
-# ==============================
-# BOSS SPAWN SETTINGS
-# ==============================
-# Se o seu map_entities.csv NÃO tem 88/89, o boss nunca vai spawnar.
-# Para não depender do CSV, este fallback spawna 1 slime perto do player
-# quando não encontrar nenhum marcador.
-BOSS_FORCE_SPAWN_IF_NONE = True
-BOSS_FORCE_OFFSET = (700, 0)   # (dx, dy) relativo ao player_pos (tile do player)
+BOSS_FORCE_OFFSET = (700, 0)   
 
 
 class MultiGroup:
@@ -68,10 +51,8 @@ class Level:
         self.item_sprites = pygame.sprite.Group()
         self.particle_sprites = pygame.sprite.Group()
 
-        # UI do boss (barra de vida etc. - normalmente update() sem dt)
         self.ui_sprites = pygame.sprite.Group()
 
-        # groups_ref pro boss.py (slime virar demon depende disso)
         self.boss_groups = {
             "all": self.visible_sprites,
             "enemies": self.attackable_sprites,
@@ -89,7 +70,6 @@ class Level:
         self.debug = False
         self.setup_map()
 
-    # ---------------- Player attacks ----------------
     def create_attack(self):
         self.current_attack = Weapon(self.player, [self.visible_sprites, self.attack_sprites])
 
@@ -114,13 +94,21 @@ class Level:
                [self.visible_sprites, self.attack_sprites],
                self.obstacle_sprites)
 
-    # ---------------- Enemy callback ----------------
     def trigger_enemy_attack(self, owner, type, pos, direction, damage):
         if type == 'projectile':
+            speed = getattr(owner, "projectile_speed", 300)
+            life_time = getattr(owner, "projectile_life_time", 3000)
+            frames = getattr(owner, "projectile_frames", None)
+            img = getattr(owner, "projectile_image", None)
+            anim_fps = getattr(owner, "projectile_anim_fps", 12)
+
             EnemyProjectile(
                 pos, [self.visible_sprites, self.enemy_attack_sprites],
-                direction, speed=300, damage=damage
+                direction, speed=speed, damage=damage,
+                image_surf=img, life_time=life_time,
+                frames=frames, anim_fps=anim_fps
             )
+
         elif type == 'melee':
             try:
                 EnemyMeleeHitbox(owner, [self.enemy_attack_sprites],
@@ -131,7 +119,6 @@ class Level:
                                     size=(100, 100), offset=(0, 0),
                                  damage=damage, duration=200)
 
-    # ---------------- Drops/VFX ----------------
     def trigger_death_logic(self, pos, particle_type):
         self.trigger_particles(pos, amount=5, color='grey')
         Collectible((pos[0] - 10, pos[1] - 10), [self.visible_sprites, self.item_sprites], 'soul')
@@ -155,16 +142,16 @@ class Level:
         for _ in range(amount):
             Particle(pos, [self.visible_sprites, self.particle_sprites], color)
 
-    # ---------------- Boss spawn ----------------
     def _spawn_boss_slime(self, pos_list):
         if not pos_list:
             return
         screen_rect = self.display_surface.get_rect()
+        print(f"[Level] Boss spawn -> {len(pos_list)} posição(ões): {pos_list}")
         for (bx, by) in pos_list:
             slime = DemonSlimeBoss(bx, by, self.player, self.boss_groups, screen_rect)
             self.visible_sprites.add(slime)
             self.attackable_sprites.add(slime)
-    # ---------------- Gameplay logic (mantive seu comportamento) ----------------
+
     def check_barrier_interaction(self):
         if hasattr(self, 'fire_barrier') and self.fire_barrier.alive():
             if self.player.hitbox.colliderect(self.fire_barrier.hitbox.inflate(10, 10)):
@@ -269,7 +256,6 @@ class Level:
         if keys[pygame.K_e]:
             self.visible_sprites.change_zoom(0.02)
 
-    # update seguro (sprites com update(dt) e update())
     def _smart_update_group(self, group, dt):
         for spr in group.sprites():
             try:
@@ -287,7 +273,6 @@ class Level:
             self.visible_sprites.floor_surf = pygame.Surface((1000, 1000))
             self.visible_sprites.floor_rect = self.visible_sprites.floor_surf.get_rect()
 
-        # >>> DEBUG: confirma que está lendo esses CSVs mesmo
         print("[Level] lendo:", './assets/maps/map_entities.csv')
 
         layouts = {
@@ -295,7 +280,6 @@ class Level:
             'entities': import_csv_layout('./assets/maps/map_entities.csv')
         }
 
-        # DEBUG: quais valores existem no entities?
         try:
             vals = set()
             for row in layouts['entities'] or []:
@@ -310,7 +294,6 @@ class Level:
         player_pos = (200, 200)
         boss_spawns = []
 
-        # 1) varre entidades
         if layouts['entities']:
             for row_index, row in enumerate(layouts['entities']):
                 for col_index, val in enumerate(row):
@@ -347,9 +330,7 @@ class Level:
                         )
 
                     elif val in ('88', '89'):
-                        center_x = final_x + (TILESIZE // 2)
-                        center_y = final_y + (TILESIZE // 2)
-                        boss_spawns.append((center_x, center_y))
+                        boss_spawns.append((final_x, final_y))
 
         if not player_created:
             self.player = Player(
@@ -361,7 +342,6 @@ class Level:
                 self.create_cracha
             )
 
-        # 2) paredes
         if layouts['boundary']:
             for row_index, row in enumerate(layouts['boundary']):
                 for col_index, val in enumerate(row):
@@ -370,7 +350,6 @@ class Level:
                         y = row_index * TILESIZE
                         Wall((x + SHIFT_X, y + SHIFT_Y), [self.obstacle_sprites])
 
-        # 3) itens / barreira
         item_x = player_pos[0]
         item_y = player_pos[1] + 100
         Collectible((item_x, item_y), [self.visible_sprites, self.item_sprites], 'cracha')
@@ -386,7 +365,6 @@ class Level:
         # Cria a loja
         self.shop = Shop(self.display_surface, self.player)
 
-        # 4) spawn boss
         if not boss_spawns and BOSS_FORCE_SPAWN_IF_NONE:
             dx, dy = BOSS_FORCE_OFFSET
             boss_spawns = [(player_pos[0] + dx, player_pos[1] + dy)]
@@ -498,8 +476,7 @@ class YSortCameraGroup(pygame.sprite.Group):
         super().__init__()
         self.display_surface = surface
 
-        # Começa neutro (boss.py já tem scale próprio; zoom 2.5 vira escala dupla).
-        self.zoom_scale = 2.0
+        self.zoom_scale = 1.0
 
         self.screen_width = self.display_surface.get_size()[0]
         self.screen_height = self.display_surface.get_size()[1]

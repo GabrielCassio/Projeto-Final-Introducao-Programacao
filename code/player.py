@@ -23,7 +23,7 @@ class Player(Entity):
         self.max_health = 200
         self.health = 200
         self.coins = 0
-        self.souls = 30
+        self.souls = 25
         self.has_cracha = False
 
         self.crit_chance = 0.20
@@ -73,7 +73,6 @@ class Player(Entity):
         path = './assets/graphics/player/idle_and_run/'
         self.animations = import_character_assets(path)
 
-    # ---------- helpers (antigo) ----------
     def roll_damage(self, base_damage: int) -> tuple[int, bool]:
         is_crit = (random.random() < self.crit_chance)
         dmg = int(base_damage * (self.crit_mult if is_crit else 1))

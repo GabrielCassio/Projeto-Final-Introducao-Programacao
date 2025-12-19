@@ -319,6 +319,24 @@ class Shop:
         ))
 
         return data
+    def _try_buy(self):
+        item = self.items[self.selection]
+        
+        # Verifica se o player tem dinheiro (usando o sistema injetado em ensure_player_economy)
+        if self.player.spend_gems(item.price):
+            # 1. Aplica o efeito no player
+            item.apply_effect(self.player)
+            
+            # 2. Feedback visual (Toast Sucesso)
+            self.toast = Toast(f"Comprou: {item.name}!", color=(100, 255, 100))
+            
+            # 3. Som (Opcional - se tiver sistema de som)
+            # if self.sound_buy: self.sound_buy.play()
+            
+        else:
+            # Feedback visual (Toast Erro)
+            self.toast = Toast("Ouro Insuficiente!", color=(255, 50, 50))
+            # if self.sound_error: self.sound_error.play()
 
     def run(self):
         self.running = True

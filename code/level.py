@@ -16,6 +16,7 @@ from cracha import Cracha
 from ui import UI
 from particle import Particle, FloatingText
 from tile import Wall, Collectible, FireBarrier, Merchant
+from shop import Shop
 
 # ==============================
 # BOSS SPAWN SETTINGS
@@ -25,25 +26,6 @@ from tile import Wall, Collectible, FireBarrier, Merchant
 # quando não encontrar nenhum marcador.
 BOSS_FORCE_SPAWN_IF_NONE = True
 BOSS_FORCE_OFFSET = (700, 0)   # (dx, dy) relativo ao player_pos (tile do player)
-
-class MultiGroup:
-    """Proxy: add() repassa para vários grupos (útil pro boss colocar projétil em 'proj')."""
-    def __init__(self, *groups):
-        self._groups = [g for g in groups if g is not None]
-
-    def add(self, *sprites):
-        for g in self._groups:
-            g.add(*sprites)
-
-    def remove(self, *sprites):
-        for g in self._groups:
-            g.remove(*sprites)
-
-    def empty(self):
-        for g in self._groups:
-            g.empty()
-
-
 
 # ==============================
 # BOSS SPAWN SETTINGS
@@ -101,6 +83,9 @@ class Level:
         self.current_attack = None
         self.ui = UI()
 
+        self.shop = None
+        self.shop_timer = 0
+
         self.debug = False
         self.setup_map()
 
@@ -143,8 +128,8 @@ class Level:
                                  damage=damage, duration=200)
             except TypeError:
                 EnemyMeleeHitbox(owner, [self.enemy_attack_sprites],
-                                 size=(100, 100), offset=(0, 0),
-                                 damage=damage, duration_ms=200)
+                                    size=(100, 100), offset=(0, 0),
+                                 damage=damage, duration=200)
 
     # ---------------- Drops/VFX ----------------
     def trigger_death_logic(self, pos, particle_type):
@@ -392,8 +377,14 @@ class Level:
 
         barrier_pos = (player_pos[0] + 16, player_pos[1] - 240)
         self.fire_barrier = FireBarrier(barrier_pos, [self.visible_sprites, self.obstacle_sprites])
+        # Cria o mercador um pouco a direita do player
         merchant_pos = (player_pos[0] + 260, player_pos[1] - 20)
+        
+        # ATENÇÃO: self.merchant DEVE ser salvo com "self."
         self.merchant = Merchant(merchant_pos, [self.visible_sprites, self.obstacle_sprites])
+        
+        # Cria a loja
+        self.shop = Shop(self.display_surface, self.player)
 
         # 4) spawn boss
         if not boss_spawns and BOSS_FORCE_SPAWN_IF_NONE:
@@ -410,6 +401,64 @@ class Level:
             print(f"[Level] Nenhum 88/89 no CSV. Fallback spawn boss perto do player em {boss_spawns[0]}.")
 
         self._spawn_boss_slime(boss_spawns)
+
+    def check_merchant_interaction(self):
+        # 1. Seguranças básicas
+        if not hasattr(self, 'merchant') or not self.merchant:
+            return
+        if not hasattr(self, 'shop') or not self.shop:
+            return
+
+        # 2. Cria a zona de interação (um pouco maior que o mercador)
+        interaction_zone = self.merchant.hitbox.inflate(100, 100)
+
+        # 3. Verifica colisão (Se o player está perto)
+        if self.player.hitbox.colliderect(interaction_zone):
+            
+            # --- PARTE NOVA: DESENHAR O AVISO NA TELA ---
+            
+            # Pega a posição do mercador e desconta o movimento da câmera (offset)
+            offset = self.visible_sprites.offset
+            # Posiciona o texto 40 pixels acima da cabeça do mercador
+            dest_x = self.merchant.rect.centerx - offset.x
+            dest_y = self.merchant.rect.top - offset.y - 40
+            
+            # Cria a fonte (usando padrão do sistema para garantir que funcione)
+            font = pygame.font.SysFont("arial", 20, bold=True)
+            
+            # Renderiza o Texto: (Texto, Antialias, Cor da Letra, Cor de Fundo)
+            # Fundo preto ajuda a ler melhor
+            text_surf = font.render(" [E] ou [B] LOJA ", True, (255, 255, 255), (0, 0, 0))
+            text_rect = text_surf.get_rect(center=(dest_x, dest_y))
+            
+            # Desenha na tela
+            self.display_surface.blit(text_surf, text_rect)
+            
+            # Desenha uma setinha pequena para baixo apontando pro NPC
+            pygame.draw.polygon(self.display_surface, (255, 255, 255), [
+                (dest_x - 5, dest_y + 15),
+                (dest_x + 5, dest_y + 15),
+                (dest_x, dest_y + 25)
+            ])
+            # ---------------------------------------------
+
+            # 4. Lógica de Input (Adicionei o K_b para você!)
+            keys = pygame.key.get_pressed()
+            current_time = pygame.time.get_ticks()
+
+            # Aceita tecla 'E' OU tecla 'B'
+            if (keys[pygame.K_e] or keys[pygame.K_b]) and current_time - self.shop_timer > 500:
+                self.shop_timer = current_time
+                
+                # Para o player (tira inércia)
+                self.player.direction = pygame.math.Vector2(0,0)
+                self.player.status = 'idle'
+
+                # Abre a loja
+                self.shop.run()
+                
+                # Reseta timer ao fechar
+                self.shop_timer = pygame.time.get_ticks()
 
     def run(self, dt):
         self.input_debug()
@@ -435,6 +484,8 @@ class Level:
                         enemy.actions(self.player)
 
             self.ui.display(self.player)
+
+            self.check_merchant_interaction()
 
             try:
                 self.check_barrier_interaction()

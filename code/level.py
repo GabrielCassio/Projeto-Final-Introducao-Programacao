@@ -17,6 +17,24 @@ from ui import UI
 from particle import Particle, FloatingText
 from tile import Wall, Collectible, FireBarrier
 
+class MultiGroup:
+    """Proxy: add() repassa para vários grupos (útil pro boss colocar projétil em 'proj')."""
+    def __init__(self, *groups):
+        self._groups = [g for g in groups if g is not None]
+
+    def add(self, *sprites):
+        for g in self._groups:
+            g.add(*sprites)
+
+    def remove(self, *sprites):
+        for g in self._groups:
+            g.remove(*sprites)
+
+    def empty(self):
+        for g in self._groups:
+            g.empty()
+
+
 class Level:
     def __init__(self, surface):
         self.display_surface = surface

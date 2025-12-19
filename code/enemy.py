@@ -197,6 +197,8 @@ class Enemy(Entity):
         self.obstacle_sprites = obstacle_sprites
         self.damage_player_callback = damage_player_callback
         self.trigger_death_callback = trigger_death_callback
+
+        self.has_attacked = False
         
         # Carrega gráficos
         self.import_graphics(monster_name)
@@ -219,19 +221,19 @@ class Enemy(Entity):
             self.speed = 80
             self.attack_damage = 20
             self.attack_radius = 34
-            self.notice_radius = 30
+            self.notice_radius = 300
         elif monster_name == 'ghost':
             self.health = 60
             self.speed = 100
             self.attack_damage = 15
-            self.attack_radius = 40
-            self.notice_radius = 30
+            self.attack_radius = 250
+            self.notice_radius = 300
         elif monster_name == 'vampire':
             self.health = 150
             self.speed = 110
             self.attack_damage = 30
             self.attack_radius = 70
-            self.notice_radius = 30
+            self.notice_radius = 300
 
         # Combate
         self.can_attack = True
@@ -251,33 +253,43 @@ class Enemy(Entity):
         config = ENEMY_SHEET_DICT.get(name)
         if not config: return 
 
-        # --- AJUSTE DE TAMANHO (ESQUELETO PEQUENO) ---
+        # Ajuste de escala
         scale_val = 1
-        if name == 'skeleton':
-            scale_val = 1
-        if name == 'ghost':
-            scale_val = 0.25
-        # ---------------------------------------------
+        if name == 'skeleton': scale_val = 1.5
+        if name == 'ghost': scale_val = 0.25
+        if name == 'vampire': scale_val = 1.5
 
         path = f'./assets/graphics/enemy/{name}/'
+        
         for anim in self.animations.keys():
+            # --- PULO DO GATO: Se for Ghost e Idle, pula o carregamento do arquivo ---
+            if name == 'ghost' and anim == 'idle':
+                continue
+            # ------------------------------------------------------------------------
+
             full_path = path + f'{name}_{anim}.png'
             try:
                 img = pygame.image.load(full_path).convert_alpha()
                 frames = slice_strip_simple(img, config[anim]['cols'], config[anim]['rows'], scale_val)
                 self.animations[anim] = frames
             except Exception as e:
-                print(f"!!! ERRO AO CARREGAR: {full_path}")
-                print(e)
-            
-            # --- TRAVA DE SEGURANÇA (O FIX IMPORTANTE) ---
-            # Verifica se a lista está vazia DEPOIS de tentar carregar
-            if len(self.animations[anim]) == 0:
-                print(f"--> Criando placeholder vermelho para {name} {anim}")
+                # Se der erro nos outros, cria o quadrado vermelho de segurança
+                # Mas pro Ghost Idle não vai cair aqui pq demos 'continue' acima
+                print(f"Erro ao carregar {anim} de {name}")
                 surf = pygame.Surface((32, 32))
                 surf.fill('red')
                 self.animations[anim] = [surf]
 
+        # --- CORREÇÃO DO GHOST (GAMBIARRA OFICIAL) ---
+        if name == 'ghost':
+            # Verifica se a animação de andar carregou corretamente
+            if len(self.animations['move']) > 0:
+                # Pega o primeiro frame do movimento e define como a lista de idle
+                first_frame = self.animations['move'][0]
+                self.animations['idle'] = [first_frame]
+            else:
+                print("ERRO CRÍTICO: Ghost não tem nem animação de andar para copiar!")
+        # ---------------------------------------------
     def get_player_distance_direction(self, player):
         enemy_vec = pygame.math.Vector2(self.rect.center)
         player_vec = pygame.math.Vector2(player.rect.center)
@@ -289,51 +301,79 @@ class Enemy(Entity):
     def get_status(self, player):
         distance, direction = self.get_player_distance_direction(player)
 
-        if distance <= self.attack_radius and self.can_attack:
-            if self.status != 'attack':
-                self.frame_index = 0
-            self.status = 'attack'
+        # 1. Se estiver dentro da área de ataque
+        if distance <= self.attack_radius:
+            if self.can_attack:
+                # Se a arma tá carregada -> ATACA
+                if self.status != 'attack':
+                    self.frame_index = 0
+                self.status = 'attack'
+            else:
+                # --- A MUDANÇA MÁGICA ---
+                # Se a arma tá recarregando (Cooldown), NÃO ANDA. Fica parado olhando.
+                self.status = 'idle' 
+                # ------------------------
+        
+        # 2. Se estiver fora do ataque, mas viu o player -> PERSEGUE
         elif distance <= self.notice_radius:
             self.status = 'move'
+        
+        # 3. Se player tá muito longe -> DORME
         else:
             self.status = 'idle'
 
     def actions(self, player):
+        # 1. Trava de Knockback
+        if not self.vulnerable:
+            return 
+
+        # 2. Lógica de Ataque (igual antes)
         if self.status == 'attack':
             self.attack_time = pygame.time.get_ticks()
-            
+            current_frame = int(self.frame_index)
+
             if self.monster_name == 'vampire':
-                if int(self.frame_index) == 3:
-                      self.damage_player_callback(self, 'melee', self.rect.center, None, self.attack_damage)
-            
+                if current_frame >= 3 and not self.has_attacked:
+                       self.damage_player_callback(self, 'melee', self.rect.center, None, self.attack_damage)
+                       self.has_attacked = True
+
             elif self.monster_name == 'ghost':
-                if int(self.frame_index) == 4: 
+                if current_frame >= 4 and not self.has_attacked: 
                       _, direction = self.get_player_distance_direction(player)
                       self.damage_player_callback(self, 'projectile', self.rect.center, direction, self.attack_damage)
-            
-            elif self.monster_name == 'skeleton':
-                if int(self.frame_index) == 4:
-                    self.damage_player_callback(self, 'melee', self.rect.center, None, self.attack_damage)
+                      self.has_attacked = True
 
+            elif self.monster_name == 'skeleton':
+                if current_frame >= 4 and not self.has_attacked:
+                    self.damage_player_callback(self, 'melee', self.rect.center, None, self.attack_damage)
+                    self.has_attacked = True
+
+        # 3. Lógica de Movimento (AQUI ESTÁ A CORREÇÃO DE SEGURANÇA)
         elif self.status == 'move':
             current_time = pygame.time.get_ticks()
             
-            # --- LÓGICA DE MOVIMENTO INTELIGENTE (OTIMIZADA) ---
+            # Recalcula caminho a cada 1 segundo (para não pesar o processador)
             if current_time - self.path_timer > 1000:
                 self.path_timer = current_time
-                
                 dist, _ = self.get_player_distance_direction(player)
                 
+                # Se estiver muito perto, não precisa de pathfinding complexo
                 if dist < 100:
                     self.current_path_target = None
                 else:
-                    target_pos = self.pathfinder.get_path(self.rect.center, player.rect.center)
-                    if target_pos:
-                        self.current_path_target = target_pos
-                    else:
-                        self.current_path_target = None 
-            
+                    # Tenta achar caminho inteligente
+                    try:
+                        target_pos = self.pathfinder.get_path(self.rect.center, player.rect.center)
+                        if target_pos:
+                            self.current_path_target = target_pos
+                        else:
+                            self.current_path_target = None 
+                    except:
+                        self.current_path_target = None
+
+            # --- EXECUÇÃO DO MOVIMENTO ---
             if self.current_path_target:
+                # Se tem um alvo do A*, vai até ele
                 vec = self.current_path_target - pygame.math.Vector2(self.rect.center)
                 if vec.magnitude() > 0:
                     self.direction = vec.normalize()
@@ -341,19 +381,40 @@ class Enemy(Entity):
                     self.direction = pygame.math.Vector2()
                     self.current_path_target = None 
             else:
+                # --- PLANO B (FALLBACK) ---
+                # Se não tem caminho calculado (ou falhou), vai em linha reta pro player
+                # Isso garante que ele NUNCA fique parado se estiver no status 'move'
                 _, self.direction = self.get_player_distance_direction(player)
 
     def animate(self, dt):
         current_animation = self.animations[self.status]
-        self.frame_index += 8 * dt
+        
+        # Avança os frames
+        self.frame_index += 8 * dt # 8 é a velocidade da animação
+        
+        # Se a animação acabou (chegou no último frame)
         if self.frame_index >= len(current_animation):
+            
+            # Se estava atacando, agora para
             if self.status == 'attack':
                 self.can_attack = False
+                self.has_attacked = False # <--- O FIX ESTÁ AQUI! Reseta a memória
                 self.status = 'idle'
+            
+            # Reseta o frame para 0 (loop)
             self.frame_index = 0
 
-        self.image = current_animation[int(self.frame_index)]
+        # Aplica a imagem correta
+        # Proteção para não quebrar se o frame_index passar do limite por um instante
+        frame = int(self.frame_index)
+        if frame >= len(current_animation):
+            frame = 0
+            
+        self.image = current_animation[frame]
         self.rect = self.image.get_rect(center=self.hitbox.center)
+        
+        # Espelha a imagem se estiver andando para a esquerda
+        # Mas só espelha se tiver velocidade, senão fica piscando
         if self.direction.x < 0:
             self.image = pygame.transform.flip(self.image, True, False)
 
@@ -368,12 +429,30 @@ class Enemy(Entity):
 
     def get_damage(self, player, attack_type):
         if self.vulnerable:
-            self.health -= 20 # Ou o dano da arma do player
+            # Dano base
+            self.health -= 20 
             self.vulnerable = False
             self.hit_time = pygame.time.get_ticks()
             
+            # --- NOVO: LÓGICA DE KNOCKBACK ---
+            # 1. Pega os centros
+            enemy_vec = pygame.math.Vector2(self.rect.center)
+            player_vec = pygame.math.Vector2(player.rect.center)
+            
+            # 2. Subtrai (Inimigo - Player) para achar a direção OPOSTA
+            knockback_direction = (enemy_vec - player_vec)
+            
+            # 3. Normaliza (para o vetor ter tamanho 1 e não voar infinito)
+            if knockback_direction.magnitude() > 0:
+                self.direction = knockback_direction.normalize()
+            
+            # 4. (Opcional) Aumenta a velocidade do recuo momentaneamente?
+            # Se quiser um impacto forte, você pode multiplicar a speed aqui, 
+            # mas vamos manter simples por enquanto.
+            
+            # --- FIM DO KNOCKBACK ---
+
             if self.health <= 0:
-                # 2. Chama a função de morte passando a posição e o tipo do monstro
                 self.trigger_death_callback(self.rect.center, self.monster_name) 
                 self.kill()
 

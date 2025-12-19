@@ -29,7 +29,6 @@ class Game:
         self.audio = AudioManager()
 
     def run_menu(self):
-        
         # Loading Audio
         aplicar_config_audio(self.audio)
         self.audio.tocar_musica("MENU")

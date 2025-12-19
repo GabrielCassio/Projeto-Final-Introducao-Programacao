@@ -9,7 +9,7 @@ from player import Player
 from enemy import Enemy, EnemyProjectile, EnemyMeleeHitbox
 
 # Boss (slime -> demon)
-from boss import DemonSlimeBoss
+from boss import DemonSlimeBoss, DemonBoss
 
 from weapon import Weapon
 from cracha import Cracha
@@ -148,12 +148,10 @@ class Level:
         if not pos_list:
             return
         screen_rect = self.display_surface.get_rect()
-        print(f"[Level] Boss spawn -> {len(pos_list)} posição(ões): {pos_list}")
         for (bx, by) in pos_list:
             slime = DemonSlimeBoss(bx, by, self.player, self.boss_groups, screen_rect)
             self.visible_sprites.add(slime)
             self.attackable_sprites.add(slime)
-
     # ---------------- Gameplay logic (mantive seu comportamento) ----------------
     def check_barrier_interaction(self):
         if hasattr(self, 'fire_barrier') and self.fire_barrier.alive():
@@ -337,7 +335,9 @@ class Level:
                         )
 
                     elif val in ('88', '89'):
-                        boss_spawns.append((final_x, final_y))
+                        center_x = final_x + (TILESIZE // 2)
+                        center_y = final_y + (TILESIZE // 2)
+                        boss_spawns.append((center_x, center_y))
 
         if not player_created:
             self.player = Player(
@@ -411,7 +411,7 @@ class YSortCameraGroup(pygame.sprite.Group):
         self.display_surface = surface
 
         # Começa neutro (boss.py já tem scale próprio; zoom 2.5 vira escala dupla).
-        self.zoom_scale = 1.0
+        self.zoom_scale = 2.0
 
         self.screen_width = self.display_surface.get_size()[0]
         self.screen_height = self.display_surface.get_size()[1]

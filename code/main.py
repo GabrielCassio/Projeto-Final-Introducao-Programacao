@@ -70,7 +70,7 @@ class Game:
             elif self.status == "INICIAR JOGO":
                 self.reset_level() # Garante nível novo ao iniciar do menu
                 self.status = "level"
-            elif self.status == "MENU":
+            elif self.status == "MENU": 
                 self.status = "menu"
 
             # --- Executando a lógica da tela atual ---

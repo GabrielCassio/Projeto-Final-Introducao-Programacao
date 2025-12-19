@@ -20,10 +20,10 @@ class Player(Entity):
         self.speed = 150 
         
         # Stats
-        self.max_health = 100 
-        self.health = 100
+        self.max_health = 10000 
+        self.health = 11000
         self.coins = 0
-        self.souls = 0
+        self.souls = 30
         self.has_cracha = False 
 
         # Combate

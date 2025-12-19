@@ -1,5 +1,6 @@
 import pygame
 import random
+from fonts import carregar_fonte_padrao
 
 class Particle(pygame.sprite.Sprite):
     def __init__(self, pos, groups, color='red', size=4):
@@ -51,10 +52,7 @@ class FloatingText(pygame.sprite.Sprite):
         super().__init__(groups)
         
         # Configuração da Fonte (Pode importar do settings se tiver UI_FONT)
-        try:
-            self.font = pygame.font.Font(UI_FONT, size)
-        except:
-            self.font = pygame.font.SysFont('arial', size, bold=True)
+        self.font = carregar_fonte_padrao(size)
             
         # Renderiza o texto
         self.image = self.font.render(str(text), True, color)

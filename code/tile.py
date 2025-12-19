@@ -2,6 +2,7 @@
 import pygame 
 import math
 from settings import *
+import random
 
 class Wall(pygame.sprite.Sprite):
     def __init__(self, pos, groups):
@@ -55,3 +56,46 @@ class Collectible(pygame.sprite.Sprite):
         current_time = pygame.time.get_ticks()
         offset = math.sin(current_time * self.float_speed) * self.float_range
         self.rect.centery = self.start_y + offset
+
+class FireBarrier(pygame.sprite.Sprite):
+    def __init__(self, pos, groups):
+        super().__init__(groups)
+        
+        # --- CONFIGURAÇÃO DE TAMANHO ---
+        self.tiles_wide = 5 # Quantos tiles de largura?
+        self.pixel_width = TILESIZE * self.tiles_wide # Ex: 64 * 5 = 320 pixels
+        
+        # Cria a superfície Larga (Largura x Altura normal)
+        self.image = pygame.Surface((self.pixel_width, TILESIZE))
+        self.image.fill('red') 
+        
+        self.rect = self.image.get_rect(topleft=pos)
+        
+        # Hitbox ocupa toda a largura (Player não passa em lugar nenhum)
+        self.hitbox = self.rect.inflate(0, 0)
+        
+        self.frame_time = 0
+
+    def update(self, dt):
+        # ANIMAÇÃO DE FOGO
+        current_time = pygame.time.get_ticks()
+        if current_time - self.frame_time > 50:
+            self.frame_time = current_time
+            
+            # Limpa o fundo
+            self.image.fill('#5e0e0e') 
+            
+            # --- LOOP AJUSTADO ---
+            # Agora ele vai de 0 até self.pixel_width (largura total)
+            # Desenhando chamas lado a lado
+            for x in range(0, self.pixel_width, 8):
+                
+                # Altura aleatória da chama
+                height = random.randint(10, TILESIZE)
+                
+                # Cores quentes aleatórias
+                color = random.choice(['#ff3333', '#ff8833', '#ffff33'])
+                
+                # Desenha o retangulo da chama
+                rect_flame = pygame.Rect(x, TILESIZE - height, 8, height)
+                pygame.draw.rect(self.image, color, rect_flame)

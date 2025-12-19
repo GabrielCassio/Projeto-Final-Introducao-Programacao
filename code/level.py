@@ -15,7 +15,7 @@ from weapon import Weapon
 from cracha import Cracha
 from ui import UI
 from particle import Particle, FloatingText
-from tile import Wall, Collectible, FireBarrier
+from tile import Wall, Collectible, FireBarrier, Merchant
 
 class MultiGroup:
     """Proxy: add() repassa para vários grupos (útil pro boss colocar projétil em 'proj')."""

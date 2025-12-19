@@ -101,7 +101,7 @@ class Game:
                 elif action == "MENU":
                     self.reset_level()
                     self.status = "menu"
-
+ 
             pygame.display.update()
 
 if __name__ == '__main__':

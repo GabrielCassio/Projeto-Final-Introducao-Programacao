@@ -10,6 +10,8 @@ from cracha import Cracha
 from ui import UI
 from particle import Particle, FloatingText
 from tile import Wall, Collectible, FireBarrier
+from shop import Shop
+from tile import Merchant
 
 class Level:
     def __init__(self, surface):
@@ -303,6 +305,8 @@ class Level:
         Collectible((item_x, item_y), [self.visible_sprites, self.item_sprites], 'cracha')
         barrier_pos = (player_pos[0] + 16, player_pos[1] -240) 
         self.fire_barrier = FireBarrier(barrier_pos, [self.visible_sprites, self.obstacle_sprites])
+        merchant_pos = (player_pos[0] + 260, player_pos[1] - 20)
+        self.merchant = Merchant(merchant_pos, [self.visible_sprites, self.obstacle_sprites])
 
     def run(self, dt):
         self.input_debug()
@@ -332,9 +336,29 @@ class Level:
             except:
                 pass # Evita erro se a barreira não tiver sido criada ainda
             
-            if self.debug:
-                debug_surf = pygame.font.Font(None, 20).render(f"FPS: {int(pygame.time.Clock().get_fps())} | ZOOM: {self.visible_sprites.zoom_scale:.2f}", True, 'white')
-                self.display_surface.blit(debug_surf, (10, 50))
+                # LÓGICA DA LOJA
+        keys = pygame.key.get_pressed()
+
+        # Verifica se existe o mercador e se o player está perto
+        if hasattr(self, 'merchant') and self.player.hitbox.colliderect(self.merchant.hitbox.inflate(20, 20)):
+
+            # Mostra aviso visual
+            from particle import FloatingText # Só pra garantir
+            # (Opcional: mostrar texto "Aperte B" flutuando sobre o mercador)
+
+            if keys[pygame.K_b]:
+                # Abre a loja e PAUSA o jogo (o run da loja tem loop próprio)
+                shop = Shop(self.display_surface, self.player)
+                shop.run()
+
+                # Quando sair do shop.run(), o jogo continua aqui
+                # Precisamos resetar o timer/teclas para não reabrir instantaneamente
+                pygame.event.clear()
+            
+
+        if self.debug:
+            debug_surf = pygame.font.Font(None, 20).render(f"FPS: {int(pygame.time.Clock().get_fps())} | ZOOM: {self.visible_sprites.zoom_scale:.2f}", True, 'white')
+            self.display_surface.blit(debug_surf, (10, 50))
 
 
 # ==========================================

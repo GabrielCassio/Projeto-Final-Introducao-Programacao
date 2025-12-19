@@ -74,7 +74,7 @@ class GameRunning(Scene):
 
 
         # Instantiate the Player ("Edísio") at position (300, 300)
-        self.player = Player("Edísio", 3550, 3600, "src/sprites/psg.png")
+        self.player = Player("Edísio", 3550, 3600, "src/sprites/player/idle_and_run/down/idle-and-run1.png")
 
         # Passing the wall to the Player
         self.player.walls = self.walls

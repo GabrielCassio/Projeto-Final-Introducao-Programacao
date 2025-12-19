@@ -1,89 +1,158 @@
 import pygame
+import os
 from src.objects.character.obj_entity import Entity
 
 class Player(Entity):
-
     def __init__(self, name: str, x: int, y: int, path_sprite: str):
-        # Fixed: Do not pass 'self' to super().__init__
-        super().__init__(self, x, y, path_sprite)
+        super().__init__(name, x, y, path_sprite) # Corrigido chamada do super
 
-        # Setup
-        self.walls = []
+        # --- CONFIGURAÇÃO DE TAMANHO ---
+        # Mude este número para aumentar ou diminuir o personagem
+        self.scale_factor = 2.5
 
-        # Load the image
-        original_image = pygame.image.load(path_sprite).convert_alpha()
-
-        # Initializing the sprite of player
-        SCALE_FACTOR = 2.4 
-        w, h = original_image.get_size()
-        self.image = pygame.transform.scale(original_image, (int(w * SCALE_FACTOR), int(h * SCALE_FACTOR)))
+        # --- SETUP BÁSICO ---
+        self.name = name
+        self.walls = [] 
         
-        # 1. VISUAL RECT (Total size of the image)
-        self.rect = self.image.get_rect(topleft = (x, y))
-
-        # 2. PHYSICS HITBOX (The magic happens here)
-        # .inflate(width_change, height_change) shrinks the rect relative to its center.
-        # -10 on width: Makes the hitbox slightly thinner.
-        # -70 on height: Cuts off the head and torso from collision (adjust this value based on your sprite height).
-        self.hitbox = self.rect.inflate(-10, -70)
+        # Direção e Status
+        self.self_direction = "down"
+        self.status = "idle"
         
-        # Stats setup
+        # Variável de movimento
+        self.rect_movement = (0, 0) 
+
+        # Estrutura do Dicionário de Animações
+        self.animations = {
+            "idle": {"up": [], "down": [], "left": [], "right": []},
+            "run": {"up": [], "down": [], "left": [], "right": []},
+        }
+
+        # --- CARREGAR ASSETS ---
+        self.import_player_assets()
+        
+        # Imagem inicial
+        self.image = self.animations["idle"]["down"][0]
+        self.rect = self.image.get_rect(topleft=(x, y))
+        
+        # Hitbox ajustado (Fica proporcional ao tamanho do sprite agora)
+        # Ajuste esses valores (-10, -70) se o hitbox ficar estranho com o tamanho novo
+        self.hitbox = self.rect.inflate(-20, -50) 
+
+        # --- STATS ---
         self.stats = {'health': 100, 'energy': 60, 'attack': 10, 'magic': 4, 'speed': 6}
-        self.max_stats = {'health': 300, 'energy': 140, 'attack': 20, 'magic': 10, 'speed': 10}
-        self.upgrade_cost = {'health': 100, 'energy': 100, 'attack': 100, 'magic': 100, 'speed': 100}
+        self.speed = self.stats['speed']
         self.health = self.stats['health']
         self.energy = self.stats['energy']
-        self.exp = 120
-        self.speed = self.stats['speed']
+        self.attack = self.stats['attack']
+        self.magic = self.stats['magic']
+        
+        self.old_position = pygame.math.Vector2(x, y)
+
+    def _fallback(self):
+        """ Cria um quadrado branco caso a imagem falhe """
+        s = pygame.Surface((32 * self.scale_factor, 32 * self.scale_factor), pygame.SRCALPHA)
+        s.fill((255, 255, 255))
+        return s
+
+    def import_player_assets(self):
+        base = "src/sprites/player" 
+        dirs = ["up", "down", "left", "right"]
+
+        for d in dirs:
+            folder = os.path.join(base, "idle_and_run", d)
+            
+            if not os.path.isdir(folder):
+                print(f"AVISO: Pasta não encontrada: {folder}")
+                self.animations["idle"][d] = [self._fallback()]
+                self.animations["run"][d] = [self._fallback()]
+                continue
+
+            files = sorted([f for f in os.listdir(folder) if f.lower().endswith(".png")])
+            
+            idle = None
+            run = []
+            
+            for fn in files:
+                img = pygame.image.load(os.path.join(folder, fn)).convert_alpha()
+                
+                # --- AQUI ESTÁ O AUMENTO DE TAMANHO ---
+                w, h = img.get_size()
+                img = pygame.transform.scale(img, (int(w * self.scale_factor), int(h * self.scale_factor)))
+                # --------------------------------------
+
+                if "frame_00" in fn.lower():
+                    idle = img
+                else:
+                    run.append(img)
+
+            if idle is None:
+                idle = run[0] if run else self._fallback()
+            if not run:
+                run = [idle]
+
+            self.animations["idle"][d] = [idle]
+            self.animations["run"][d] = run
 
     def move(self, new_position_x: int, new_position_y: int) -> None:
-        
-        # Guardar posição antiga da HITBOX
-        old_hitbox_rect = self.hitbox.copy() # Usamos copy para salvar o rect inteiro
-
+        # Salva posição antiga
         self.old_position.x = self.rect.x
         self.old_position.y = self.rect.y
+        old_hitbox_rect = self.hitbox.copy()
 
-        # --- EIXO X (Horizontal) ---
+        # Atualiza Retângulo Visual
         self.rect.x = new_position_x
-        # Sincroniza: O centro X continua igual (alinhado no meio do corpo)
         self.hitbox.centerx = self.rect.centerx 
-        
-        if hasattr(self, 'walls') and self.walls:
-            if self.hitbox.collidelist(self.walls) != -1:
-                self.hitbox.centerx = old_hitbox_rect.centerx # Volta X
-                self.rect.centerx = self.hitbox.centerx       # Puxa visual
 
-        # --- EIXO Y (Vertical) ---
-        self.rect.y = new_position_y
-        
-        # AQUI É A MUDANÇA: Sincroniza pelo PÉ (Bottom) e não pelo centro
-        self.hitbox.bottom = self.rect.bottom
-        
+        # Colisão X
         if hasattr(self, 'walls') and self.walls:
             if self.hitbox.collidelist(self.walls) != -1:
-                # Bateu! Volta a hitbox para a posição Y antiga
+                self.hitbox.centerx = old_hitbox_rect.centerx
+                self.rect.centerx = self.hitbox.centerx
+
+        self.rect.y = new_position_y
+        self.hitbox.bottom = self.rect.bottom
+
+        # Colisão Y
+        if hasattr(self, 'walls') and self.walls:
+            if self.hitbox.collidelist(self.walls) != -1:
                 self.hitbox.bottom = old_hitbox_rect.bottom
-                # Puxa o visual de volta alinhando pelos pés
                 self.rect.bottom = self.hitbox.bottom
 
-    def load_sprite(self, x: int, y: int, path_sprite: str):
-        self.image = pygame.image.load(path_sprite).convert_alpha()
-        self.rect = self.image.get_rect()
-        self.rect.center = (x, y)
-        # Important: Re-create the hitbox if the sprite changes
-        self.hitbox = self.rect.inflate(-10, -70) 
+        # Calcula movimento para animação
+        dx = self.rect.x - self.old_position.x
+        dy = self.rect.y - self.old_position.y
+        
+        self.rect_movement = (dx, dy)
 
-    def animation(self):
-        # Animation logic continues to use self.rect
-        delta_pos_horizontal = self.rect.x - self.old_position.x
-        delta_pos_vertical = self.rect.y - self.old_position.y
+        if dx > 0: self.self_direction = 'right'
+        elif dx < 0: self.self_direction = 'left'
+        if dy > 0: self.self_direction = 'down'
+        elif dy < 0: self.self_direction = 'up'
 
-        if (delta_pos_horizontal > 0): self.sprite_direction = 'right'
-        elif (delta_pos_horizontal < 0): self.sprite_direction = 'left'
+    def animate(self):
+        # Verifica se está parado
+        # Usamos 0.1 como margem de erro
+        if abs(self.rect_movement[0]) < 0.1 and abs(self.rect_movement[1]) < 0.1:
+            self.status = "idle"
+            self.image = self.animations["idle"][self.self_direction][0]
+        else:
+            self.status = "run"
+            frames = self.animations["run"][self.self_direction]
+            if not frames: frames = [self._fallback()]
+            
+            idx = (pygame.time.get_ticks() // 120) % len(frames)
+            self.image = frames[idx]
 
-        if (delta_pos_vertical > 0): self.sprite_direction = 'down'
-        elif (delta_pos_vertical < 0): self.sprite_direction = 'up'
+        # RE-CENTRALIZA O SPRITE NO HITBOX (Importante quando muda de tamanho)
+        self.rect = self.image.get_rect(center=self.hitbox.center)
+        self.rect.bottom = self.hitbox.bottom
 
     def update(self):
-        self.animation()
+        self.animate()
+        
+        # --- CORREÇÃO DO IDLE ---
+        # Resetamos o movimento para zero no final de cada frame.
+        # Se o jogador continuar apertando a tecla, o método 'move()' será chamado 
+        # no próximo frame e preencherá essa variável novamente.
+        # Se ele soltar a tecla, 'move()' não é chamado, e isso aqui garante que ele fique parado.
+        self.rect_movement = (0, 0)

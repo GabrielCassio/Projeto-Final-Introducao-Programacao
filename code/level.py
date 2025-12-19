@@ -13,7 +13,34 @@ from weapon import Weapon
 from cracha import Cracha
 from ui import UI
 from particle import Particle, FloatingText
-from tile import Wall, Collectible, FireBarrier
+from tile import Wall, Collectible, FireBarrier, Merchant
+
+# ==============================
+# BOSS SPAWN SETTINGS
+# ==============================
+# Se o seu map_entities.csv NÃO tem 88/89, o boss nunca vai spawnar.
+# Para não depender do CSV, este fallback spawna 1 slime perto do player
+# quando não encontrar nenhum marcador.
+BOSS_FORCE_SPAWN_IF_NONE = True
+BOSS_FORCE_OFFSET = (700, 0)   # (dx, dy) relativo ao player_pos (tile do player)
+
+class MultiGroup:
+    """Proxy: add() repassa para vários grupos (útil pro boss colocar projétil em 'proj')."""
+    def __init__(self, *groups):
+        self._groups = [g for g in groups if g is not None]
+
+    def add(self, *sprites):
+        for g in self._groups:
+            g.add(*sprites)
+
+    def remove(self, *sprites):
+        for g in self._groups:
+            g.remove(*sprites)
+
+    def empty(self):
+        for g in self._groups:
+            g.empty()
+
 
 BOSS_FORCE_SPAWN_IF_NONE = True
 BOSS_FORCE_OFFSET = (700, 0)   
@@ -352,6 +379,16 @@ class Level:
 
         barrier_pos = (player_pos[0] + 16, player_pos[1] - 240)
         self.fire_barrier = FireBarrier(barrier_pos, [self.visible_sprites, self.obstacle_sprites])
+        merchant_pos = (player_pos[0] + 260, player_pos[1] - 20)
+        self.merchant = Merchant(merchant_pos, [self.visible_sprites, self.obstacle_sprites])
+
+        # 4) spawn boss
+        if not boss_spawns and BOSS_FORCE_SPAWN_IF_NONE:
+            dx, dy = BOSS_FORCE_OFFSET
+            boss_spawns = [(player_pos[0] + dx, player_pos[1] + dy)]
+            print(f"[Level] Nenhum 88/89 no CSV. Fallback spawn boss perto do player em {boss_spawns[0]}.")
+
+        self._spawn_boss_slime(boss_spawns)
 
         if not boss_spawns and BOSS_FORCE_SPAWN_IF_NONE:
             dx, dy = BOSS_FORCE_OFFSET

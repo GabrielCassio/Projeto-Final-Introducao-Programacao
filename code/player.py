@@ -23,7 +23,7 @@ class Player(Entity):
         self.max_health = 200
         self.health = 200
         self.coins = 0
-        self.souls = 0
+        self.souls = 30
         self.has_cracha = False
 
         self.crit_chance = 0.20

@@ -23,6 +23,7 @@ class Player(Entity):
         self.max_health = 100 
         self.health = 100
         self.coins = 0
+        self.souls = 0
         self.has_cracha = False 
 
         # Combate

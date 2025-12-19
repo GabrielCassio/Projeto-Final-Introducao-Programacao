@@ -8,7 +8,7 @@ from enemy import Enemy, EnemyProjectile, EnemyMeleeHitbox
 from weapon import Weapon 
 from cracha import Cracha
 from ui import UI
-from particle import Particle
+from particle import Particle, FloatingText
 from tile import Wall, Collectible
 
 class Level:
@@ -74,27 +74,27 @@ class Level:
     
     def trigger_death_logic(self, pos, particle_type):
         self.trigger_particles(pos, amount=5, color='grey')
-        
-        # --- NOVA LÓGICA DE DROP (RNG) ---
+
+        # --- 1. DROP DE ALMA (GARANTIDO) ---
+        # Cria uma alma um pouquinho deslocada para não ficar exatamente em cima da moeda se cair as duas
+        soul_pos = (pos[0] - 10, pos[1] - 10)
+        Collectible(soul_pos, [self.visible_sprites, self.item_sprites], 'soul')
+
+        # --- 2. DROP DE ITENS (RNG) ---
         rng = random.randint(0, 100)
         
-        # 0 a 15: Nada (15% de chance de não cair nada -> Antes era 50%)
-        # 16 a 35: Coração (20% de chance)
-        # 36 a 100: DINHEIRO (65% de chance!)
-        
         if rng < 15:
-            pass # Nada acontece
+            pass # Nada extra
         elif rng < 35:
             Collectible(pos, [self.visible_sprites, self.item_sprites], 'heart')
         else:
-            # Caiu dinheiro! Mas qual tipo?
+            # Drop de moedas...
             coin_rng = random.randint(0, 100)
-            
-            if coin_rng < 60: # 60% de ser moeda normal (1)
+            if coin_rng < 60: 
                 Collectible(pos, [self.visible_sprites, self.item_sprites], 'coin')
-            elif coin_rng < 90: # 30% de ser moeda Vermelha (5)
+            elif coin_rng < 90: 
                 Collectible(pos, [self.visible_sprites, self.item_sprites], 'coin_red')
-            else: # 10% de ser moeda Verde (10)
+            else: 
                 Collectible(pos, [self.visible_sprites, self.item_sprites], 'coin_green')
 
     def trigger_particles(self, pos, amount=10, color='red'):
@@ -108,12 +108,14 @@ class Level:
                 if collision_sprites:
                     for target_sprite in collision_sprites:
                         if hasattr(target_sprite, 'get_damage'):
+                            # Apenas causa dano e partículas, sem texto
                             target_sprite.get_damage(self.player, attack_sprite)
                             self.trigger_particles(target_sprite.rect.center, amount=8, color='#bd1919') 
                             self.visible_sprites.add_shake(6, 10) 
+                            
+                            # Destroi o projétil ao bater
                             if isinstance(attack_sprite, Cracha):
                                 attack_sprite.kill()
-
     def enemy_attack_logic(self):
         enemy_hits = pygame.sprite.spritecollide(self.player, self.enemy_attack_sprites, False)
         if enemy_hits:
@@ -132,33 +134,42 @@ class Level:
             self.player.health -= amount
             self.player.vulnerable = False
             self.player.hurt_time = pygame.time.get_ticks()
+            
+            # Apenas partículas e shake
             self.trigger_particles(self.player.rect.center, amount=10, color='white')
             self.visible_sprites.add_shake(10, 15)
-            print(f"Dano recebido: {amount}. Vida restante: {self.player.health}")
+            
             if self.player.health <= 0:
-                print("GAME OVER")
+                print("GAME OVER") # Depois mudaremos isso
+            
 
     def item_collection_logic(self):
         collected_items = pygame.sprite.spritecollide(self.player, self.item_sprites, True)
+        
         for item in collected_items:
+            # --- 1. LÓGICA DO CRACHÁ (FUNDAMENTAL) ---
             if item.item_type == 'cracha':
                 self.player.has_cracha = True
-                print("ITEM COLETADO!")
-            
+                print("ARMA EQUIPADA!") # Debug para saber se funcionou
+
+            # --- 2. CURA E PARTICULAS ---
             elif item.item_type == 'heart':
                 self.player.heal(20)
                 self.trigger_particles(self.player.rect.center, 5, 'red')
+
+            # --- 3. ALMAS ---
+            elif item.item_type == 'soul': 
+                self.player.souls += 1
+                self.trigger_particles(self.player.rect.center, 5, 'cyan')
                 
-            # --- LÓGICA DOS VALORES ---
-            elif item.item_type == 'coin':
-                self.player.coins += 1
+            # --- 4. MOEDAS ---
+            elif 'coin' in item.item_type:
+                val = 1
+                if item.item_type == 'coin_red': val = 5
+                elif item.item_type == 'coin_green': val = 10
+                
+                self.player.coins += val
                 self.trigger_particles(self.player.rect.center, 5, 'gold')
-            elif item.item_type == 'coin_red':
-                self.player.coins += 5
-                self.trigger_particles(self.player.rect.center, 8, '#ff4444')
-            elif item.item_type == 'coin_green':
-                self.player.coins += 10
-                self.trigger_particles(self.player.rect.center, 12, '#44ff44')
 
     def input_debug(self):
         keys = pygame.key.get_pressed()

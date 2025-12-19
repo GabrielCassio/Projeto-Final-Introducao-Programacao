@@ -45,3 +45,36 @@ class Particle(pygame.sprite.Sprite):
             # Garante que não fique com tamanho 0 ou negativo
             if new_size > 0:
                 self.image = pygame.transform.scale(self.image, (new_size, new_size))
+
+class FloatingText(pygame.sprite.Sprite):
+    def __init__(self, pos, text, groups, color='white', size=20):
+        super().__init__(groups)
+        
+        # Configuração da Fonte (Pode importar do settings se tiver UI_FONT)
+        try:
+            self.font = pygame.font.Font(UI_FONT, size)
+        except:
+            self.font = pygame.font.SysFont('arial', size, bold=True)
+            
+        # Renderiza o texto
+        self.image = self.font.render(str(text), True, color)
+        self.rect = self.image.get_rect(center=pos)
+        
+        # Movimento e Tempo de Vida
+        self.pos = pygame.math.Vector2(self.rect.center)
+        self.direction = pygame.math.Vector2(0, -1) # Sempre sobe
+        self.speed = 30 # Velocidade de subida
+        self.alpha = 255 # Transparência (0 a 255)
+        self.fade_speed = 4 # Velocidade que desaparece
+        
+    def update(self, dt):
+        # Move para cima
+        self.pos += self.direction * self.speed * dt
+        self.rect.center = self.pos
+        
+        # Efeito de Fade Out (Desaparecer)
+        self.alpha -= self.fade_speed
+        if self.alpha <= 0:
+            self.kill()
+        else:
+            self.image.set_alpha(self.alpha)

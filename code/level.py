@@ -17,6 +17,15 @@ from ui import UI
 from particle import Particle, FloatingText
 from tile import Wall, Collectible, FireBarrier, Merchant
 
+# ==============================
+# BOSS SPAWN SETTINGS
+# ==============================
+# Se o seu map_entities.csv NÃO tem 88/89, o boss nunca vai spawnar.
+# Para não depender do CSV, este fallback spawna 1 slime perto do player
+# quando não encontrar nenhum marcador.
+BOSS_FORCE_SPAWN_IF_NONE = True
+BOSS_FORCE_OFFSET = (700, 0)   # (dx, dy) relativo ao player_pos (tile do player)
+
 class MultiGroup:
     """Proxy: add() repassa para vários grupos (útil pro boss colocar projétil em 'proj')."""
     def __init__(self, *groups):

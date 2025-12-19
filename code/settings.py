@@ -34,3 +34,9 @@ ENEMIES = ['skeleton', 'vampire', 'ghost']
 
 SHIFT_X = 16 * 16
 SHIFT_Y = 16 * 15
+
+SHIFT_X_PLAYER = None
+SHIFT_Y_PLAYER = None 
+
+SHIFT_X_ENEMIES = 32 
+SHIFT_Y_ENEMIES = 100

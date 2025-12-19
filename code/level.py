@@ -70,6 +70,23 @@ class Level:
                 damage=damage, 
                 duration=200
             )
+    
+    def trigger_death_logic(self, pos, particle_type):
+
+        self.trigger_particles(pos, amount=5, color='grey')
+
+        # Lógica de Drop (RNG)
+        # 50% de chance de não dropar nada
+        # 30% de chance de dropar Moeda
+        # 20% de chance de dropar Coração
+        rng = random.randint(0, 100)
+        
+        if rng < 50: 
+            pass # Azar, não dropou nada
+        elif rng < 80: # 50 a 79 (30%)
+            Collectible(pos, [self.visible_sprites, self.item_sprites], 'coin')
+        else: # 80 a 100 (20%)
+            Collectible(pos, [self.visible_sprites, self.item_sprites], 'heart')
 
     def trigger_particles(self, pos, amount=10, color='red'):
         for i in range(amount):
@@ -118,6 +135,16 @@ class Level:
             if item.item_type == 'cracha':
                 self.player.has_cracha = True
                 print("ITEM COLETADO!")
+            
+            # --- NOVOS TIPOS ---
+            elif item.item_type == 'heart':
+                self.player.heal(20) # Cura 20 de vida
+                self.trigger_particles(self.player.rect.center, 5, 'red')
+                
+            elif item.item_type == 'coin':
+                self.player.coins += 1
+                print(f"Moedas: {self.player.coins}")
+                self.trigger_particles(self.player.rect.center, 5, 'yellow')
 
     def input_debug(self):
         keys = pygame.key.get_pressed()
@@ -183,10 +210,11 @@ class Level:
                              monster_choice = random.choice(ENEMIES)
                              Enemy(
                                 monster_choice, 
-                                (final_x + 32, final_y + 100), 
+                                (final_x + SHIFT_X_ENEMIES, final_y + SHIFT_Y_ENEMIES), 
                                 [self.visible_sprites, self.attackable_sprites], 
                                 self.obstacle_sprites,
-                                self.trigger_enemy_attack 
+                                self.trigger_enemy_attack,
+                                self.trigger_death_logic 
                             )
         
         if not player_created:
@@ -243,30 +271,34 @@ class Level:
 # Classes Auxiliares
 # ==========================================
 
-class Wall(pygame.sprite.Sprite):
-    def __init__(self, pos, groups):
-        super().__init__(groups)
-        self.rect = pygame.Rect(pos, (TILESIZE, TILESIZE))
-        self.hitbox = self.rect.inflate(0, -6)
-
 class Collectible(pygame.sprite.Sprite):
     def __init__(self, pos, groups, item_type):
         super().__init__(groups)
         self.item_type = item_type
-        try:
-            path = './assets/graphics/player/attack/ranged/down/attack-ranged-front1.png'
-            self.image = pygame.image.load(path).convert_alpha()
-            self.image = pygame.transform.scale(self.image, (32, 32))
-        except:
-            self.image = pygame.Surface((30, 30))
-            self.image.fill('gold')
+        
+        # Placeholder Gráfico (Caso não tenha imagem, usa cor)
+        self.image = pygame.Surface((24, 24))
+        
+        if self.item_type == 'cracha':
+             # Tenta carregar imagem ou usa Gold
+            self.image.fill('gold') 
+        elif self.item_type == 'heart':
+            self.image.fill('red')
+            # Desenhar um formato simples de cruz ou usar imagem real
+            pygame.draw.rect(self.image, 'white', (8, 4, 8, 16))
+            pygame.draw.rect(self.image, 'white', (4, 8, 16, 8))
+        elif self.item_type == 'coin':
+            self.image.fill('yellow')
+            pygame.draw.circle(self.image, 'orange', (12,12), 10, 2)
+            
         self.rect = self.image.get_rect(center=pos)
-        self.hitbox = self.rect.inflate(0, 0)
+        self.hitbox = self.rect.inflate(-10, -10)
         self.start_y = self.rect.centery
         self.float_speed = 0.005
         self.float_range = 5 
     
     def update(self, dt):
+        # Efeito de flutuar
         current_time = pygame.time.get_ticks()
         offset = math.sin(current_time * self.float_speed) * self.float_range
         self.rect.centery = self.start_y + offset

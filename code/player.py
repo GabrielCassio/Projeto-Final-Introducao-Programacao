@@ -22,6 +22,7 @@ class Player(Entity):
         # Stats
         self.max_health = 100 
         self.health = 100
+        self.coins = 0
         self.has_cracha = False 
 
         # Combate
@@ -156,6 +157,13 @@ class Player(Entity):
         value = math.sin(pygame.time.get_ticks())
         if value >= 0: return 255
         else: return 0
+    
+    def heal(self, amount):
+        if self.health < self.max_health:
+            self.health += amount
+            if self.health > self.max_health:
+                self.health = self.max_health
+            print(f"Curado! Vida atual: {self.health}")
 
     def update(self, dt):
         self.input()

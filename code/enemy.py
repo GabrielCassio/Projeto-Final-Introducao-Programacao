@@ -189,13 +189,14 @@ class Pathfinder:
 # Classe Enemy (Principal)
 # ==========================================
 class Enemy(Entity):
-    def __init__(self, monster_name, pos, groups, obstacle_sprites, damage_player_callback):
+    def __init__(self, monster_name, pos, groups, obstacle_sprites, damage_player_callback, trigger_death_callback):
         super().__init__(groups)
         
         self.sprite_type = 'enemy'
         self.monster_name = monster_name
         self.obstacle_sprites = obstacle_sprites
         self.damage_player_callback = damage_player_callback
+        self.trigger_death_callback = trigger_death_callback
         
         # Carrega gráficos
         self.import_graphics(monster_name)
@@ -367,10 +368,13 @@ class Enemy(Entity):
 
     def get_damage(self, player, attack_type):
         if self.vulnerable:
-            self.health -= 20
+            self.health -= 20 # Ou o dano da arma do player
             self.vulnerable = False
             self.hit_time = pygame.time.get_ticks()
+            
             if self.health <= 0:
+                # 2. Chama a função de morte passando a posição e o tipo do monstro
+                self.trigger_death_callback(self.rect.center, self.monster_name) 
                 self.kill()
 
     def update(self, dt):

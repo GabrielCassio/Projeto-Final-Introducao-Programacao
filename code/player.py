@@ -144,7 +144,7 @@ class Player(Entity):
 
         frame = int(self.frame_index)
         self.image = current_animation[frame]
-        self.rect = self.image.get_rect(center=self.hitbox.center)
+        self.rect.center = self.hitbox.center
 
         if not self.vulnerable:
             alpha = self.wave_value()

@@ -164,24 +164,18 @@ class Level:
                         final_x = x + SHIFT_X
                         final_y = y + SHIFT_Y
 
-                        if (final_x < map_rect.left or final_x > map_rect.right or 
-                            final_y < map_rect.top or final_y > map_rect.bottom):
-                            continue 
-
-                        try:
-                            if layouts['boundary'][row_index][col_index] != '-1':
-                                continue
-                        except: pass
+                        
 
                         if val == '97':
                             self.player = Player(
-                                (final_x, final_y), 
+                                (final_x + 50, final_y + 100), 
                                 [self.visible_sprites], 
                                 self.obstacle_sprites,
                                 self.create_attack, 
                                 self.destroy_attack, 
                                 self.create_cracha
                             )
+                            print('spawnei no lugar certo')
                             player_pos = (final_x, final_y)
                             player_created = True
                         
@@ -189,7 +183,7 @@ class Level:
                              monster_choice = random.choice(ENEMIES)
                              Enemy(
                                 monster_choice, 
-                                (final_x, final_y), 
+                                (final_x + 32, final_y + 100), 
                                 [self.visible_sprites, self.attackable_sprites], 
                                 self.obstacle_sprites,
                                 self.trigger_enemy_attack 
